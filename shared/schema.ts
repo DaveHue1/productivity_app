@@ -38,6 +38,7 @@ export const tasks = pgTable("tasks", {
   recurring: varchar("recurring", { length: 20 }).notNull().default("none"), // none, daily, weekly, monthly
   recurringDays: text("recurring_days"),
   recurringEndDate: text("recurring_end_date"),
+  order: integer("order").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -54,7 +55,7 @@ export const subtasks = pgTable("subtasks", {
 // Pomodoro sessions table
 export const pomodoroSessions = pgTable("pomodoro_sessions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  taskId: varchar("task_id").default(null),
+  taskId: varchar("task_id"),
   duration: integer("duration").notNull(), // in minutes
   completedAt: timestamp("completed_at").notNull().defaultNow(),
 });

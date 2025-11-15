@@ -96,9 +96,11 @@ export class MemStorage implements IStorage {
       completed: false,
       priority: "high",
       trackId: track1.id,
+      projectId: null,
       recurring: "none",
       recurringDays: null,
       recurringEndDate: null,
+      order: 0,
       createdAt: new Date(),
     };
 
@@ -114,9 +116,11 @@ export class MemStorage implements IStorage {
       completed: false,
       priority: "high",
       trackId: track2.id,
+      projectId: null,
       recurring: "none",
       recurringDays: null,
       recurringEndDate: null,
+      order: 0,
       createdAt: new Date(),
     };
 
@@ -132,9 +136,11 @@ export class MemStorage implements IStorage {
       completed: true,
       priority: "medium",
       trackId: null,
+      projectId: null,
       recurring: "none",
       recurringDays: null,
       recurringEndDate: null,
+      order: 1,
       createdAt: new Date(),
     };
 
@@ -145,9 +151,12 @@ export class MemStorage implements IStorage {
 
   // Task methods
   async getTasks(): Promise<Task[]> {
-    return Array.from(this.tasks.values()).sort((a, b) =>
-      a.date.localeCompare(b.date)
-    );
+    return Array.from(this.tasks.values()).sort((a, b) => {
+      // Sort by date first, then by order
+      const dateCompare = a.date.localeCompare(b.date);
+      if (dateCompare !== 0) return dateCompare;
+      return (a.order || 0) - (b.order || 0);
+    });
   }
 
   async getTask(id: string): Promise<Task | undefined> {

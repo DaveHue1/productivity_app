@@ -120,7 +120,16 @@ export function DragDropTaskList({ tasks, tracks, onTaskUpdate, onTaskClick }: D
       setSortedTasks((items) => {
         const oldIndex = items.findIndex((item) => item.id === active.id);
         const newIndex = items.findIndex((item) => item.id === over.id);
-        return arrayMove(items, oldIndex, newIndex);
+        const newOrder = arrayMove(items, oldIndex, newIndex);
+        
+        // Update order in backend for all affected tasks
+        newOrder.forEach((task, index) => {
+          if ((task.order || 0) !== index) {
+            onTaskUpdate(task.id, { order: index });
+          }
+        });
+        
+        return newOrder;
       });
     }
   };

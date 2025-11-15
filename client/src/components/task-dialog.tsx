@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Task, InsertTask, Track } from "@shared/schema";
+import { Task, InsertTask, Track, Subtask, InsertSubtask, Project } from "@shared/schema";
 import {
   Dialog,
   DialogContent,
@@ -21,6 +21,27 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { TASK_TYPES } from "@/lib/constants";
 import { getTodayString } from "@/lib/utils-date";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import { Plus, Trash2, GripVertical } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 interface TaskDialogProps {
   open: boolean;
@@ -30,7 +51,65 @@ interface TaskDialogProps {
   onSave: (task: InsertTask | (Task & Partial<InsertTask>)) => void;
 }
 
+function SortableSubtaskItem({
+  subtask,
+  onToggle,
+  onDelete,
+}: {
+  subtask: Subtask;
+  onToggle: () => void;
+  onDelete: () => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+  } = useSortable({ id: subtask.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center gap-2 p-2 bg-muted/50 rounded-md"
+      data-testid={`subtask-item-${subtask.id}`}
+    >
+      <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing">
+        <GripVertical className="w-4 h-4 text-muted-foreground" />
+      </div>
+      <Checkbox
+        checked={subtask.completed}
+        onCheckedChange={onToggle}
+        data-testid={`checkbox-subtask-${subtask.id}`}
+      />
+      <span
+        className={`flex-1 text-sm ${subtask.completed ? "line-through text-muted-foreground" : ""}`}
+        data-testid={`text-subtask-title-${subtask.id}`}
+      >
+        {subtask.title}
+      </span>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        onClick={onDelete}
+        className="h-7 w-7"
+        data-testid={`button-delete-subtask-${subtask.id}`}
+      >
+        <Trash2 className="w-4 h-4" />
+      </Button>
+    </div>
+  );
+}
+
 export function TaskDialog({ open, onOpenChange, task, tracks, onSave }: TaskDialogProps) {
+  const { toast } = useToast();
   const [formData, setFormData] = useState<InsertTask>({
     title: "",
     description: "",
@@ -42,6 +121,7 @@ export function TaskDialog({ open, onOpenChange, task, tracks, onSave }: TaskDia
     completed: false,
     priority: "medium",
     trackId: null,
+    projectId: null,
     recurring: "none",
     recurringDays: null,
     recurringEndDate: null,
@@ -50,6 +130,60 @@ export function TaskDialog({ open, onOpenChange, task, tracks, onSave }: TaskDia
   const [isMultiDay, setIsMultiDay] = useState(false);
   const [hasTime, setHasTime] = useState(false);
   const [isRecurring, setIsRecurring] = useState(false);
+  const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
+  const [subtasks, setSubtasks] = useState<Subtask[]>([]);
+
+  // Fetch subtasks when editing a task
+  const { data: fetchedSubtasks } = useQuery<Subtask[]>({
+    queryKey: ["/api/tasks", task?.id, "subtasks"],
+    enabled: !!task?.id && open,
+  });
+
+  // Fetch projects for project selector
+  const { data: projects = [] } = useQuery<Project[]>({
+    queryKey: ["/api/projects"],
+    enabled: open,
+  });
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  // Mutations
+  const createSubtaskMutation = useMutation({
+    mutationFn: async (data: InsertSubtask) => {
+      const res = await apiRequest("POST", "/api/subtasks", data);
+      return res.json();
+    },
+    onSuccess: (newSubtask: Subtask) => {
+      setSubtasks([...subtasks, newSubtask]);
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks", task?.id, "subtasks"] });
+      toast({ title: "Subtask added" });
+    },
+  });
+
+  const updateSubtaskMutation = useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: Partial<InsertSubtask> }) => {
+      const res = await apiRequest("PATCH", `/api/subtasks/${id}`, updates);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks", task?.id, "subtasks"] });
+    },
+  });
+
+  const deleteSubtaskMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/subtasks/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks", task?.id, "subtasks"] });
+      toast({ title: "Subtask deleted" });
+    },
+  });
 
   useEffect(() => {
     if (task) {
@@ -69,6 +203,7 @@ export function TaskDialog({ open, onOpenChange, task, tracks, onSave }: TaskDia
         completed: false,
         priority: "medium",
         trackId: null,
+        projectId: null,
         recurring: "none",
         recurringDays: null,
         recurringEndDate: null,
@@ -76,8 +211,66 @@ export function TaskDialog({ open, onOpenChange, task, tracks, onSave }: TaskDia
       setIsMultiDay(false);
       setHasTime(false);
       setIsRecurring(false);
+      setSubtasks([]);
     }
   }, [task, open]);
+
+  useEffect(() => {
+    if (fetchedSubtasks) {
+      setSubtasks(fetchedSubtasks);
+    }
+  }, [fetchedSubtasks]);
+
+  const handleAddSubtask = () => {
+    if (!newSubtaskTitle.trim() || !task?.id) return;
+
+    createSubtaskMutation.mutate({
+      taskId: task.id,
+      title: newSubtaskTitle,
+      completed: false,
+      order: subtasks.length,
+    });
+    setNewSubtaskTitle("");
+  };
+
+  const handleToggleSubtask = (subtask: Subtask) => {
+    updateSubtaskMutation.mutate({
+      id: subtask.id,
+      updates: { completed: !subtask.completed },
+    });
+    setSubtasks(subtasks.map(st => 
+      st.id === subtask.id ? { ...st, completed: !st.completed } : st
+    ));
+  };
+
+  const handleDeleteSubtask = (id: string) => {
+    deleteSubtaskMutation.mutate(id);
+    setSubtasks(subtasks.filter(st => st.id !== id));
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      setSubtasks((items) => {
+        const oldIndex = items.findIndex((item) => item.id === active.id);
+        const newIndex = items.findIndex((item) => item.id === over.id);
+        const newOrder = arrayMove(items, oldIndex, newIndex);
+        
+        // Update order in backend
+        newOrder.forEach((item, index) => {
+          if (item.order !== index) {
+            updateSubtaskMutation.mutate({
+              id: item.id,
+              updates: { order: index },
+            });
+          }
+        });
+        
+        return newOrder;
+      });
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -147,24 +340,46 @@ export function TaskDialog({ open, onOpenChange, task, tracks, onSave }: TaskDia
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="track">Track (Optional)</Label>
-            <Select
-              value={formData.trackId || "none"}
-              onValueChange={(value) => setFormData({ ...formData, trackId: value === "none" ? null : value })}
-            >
-              <SelectTrigger id="track" data-testid="select-task-track">
-                <SelectValue placeholder="Select a track" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none" data-testid="option-track-none">No Track</SelectItem>
-                {tracks.map((track) => (
-                  <SelectItem key={track.id} value={track.id} data-testid={`option-track-${track.id}`}>
-                    <span style={{ color: track.color }}>●</span> {track.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="track">Track (Optional)</Label>
+              <Select
+                value={formData.trackId || "none"}
+                onValueChange={(value) => setFormData({ ...formData, trackId: value === "none" ? null : value })}
+              >
+                <SelectTrigger id="track" data-testid="select-task-track">
+                  <SelectValue placeholder="Select a track" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none" data-testid="option-track-none">No Track</SelectItem>
+                  {tracks.map((track) => (
+                    <SelectItem key={track.id} value={track.id} data-testid={`option-track-${track.id}`}>
+                      <span style={{ color: track.color }}>●</span> {track.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="project">Project (Optional)</Label>
+              <Select
+                value={formData.projectId || "none"}
+                onValueChange={(value) => setFormData({ ...formData, projectId: value === "none" ? null : value })}
+              >
+                <SelectTrigger id="project" data-testid="select-task-project">
+                  <SelectValue placeholder="Select a project" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none" data-testid="option-project-none">No Project</SelectItem>
+                  {projects.map((project) => (
+                    <SelectItem key={project.id} value={project.id} data-testid={`option-project-${project.id}`}>
+                      {project.color && <span style={{ color: project.color }}>●</span>} {project.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <div className="space-y-2">
@@ -308,6 +523,60 @@ export function TaskDialog({ open, onOpenChange, task, tracks, onSave }: TaskDia
               </div>
             )}
           </div>
+
+          {task && (
+            <div className="space-y-3 pt-4 border-t">
+              <Label className="text-base">Subtasks</Label>
+              
+              {subtasks.length > 0 && (
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
+                >
+                  <SortableContext
+                    items={subtasks.map(st => st.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <div className="space-y-2">
+                      {subtasks.map((subtask) => (
+                        <SortableSubtaskItem
+                          key={subtask.id}
+                          subtask={subtask}
+                          onToggle={() => handleToggleSubtask(subtask)}
+                          onDelete={() => handleDeleteSubtask(subtask.id)}
+                        />
+                      ))}
+                    </div>
+                  </SortableContext>
+                </DndContext>
+              )}
+
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Add a subtask..."
+                  value={newSubtaskTitle}
+                  onChange={(e) => setNewSubtaskTitle(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleAddSubtask();
+                    }
+                  }}
+                  data-testid="input-new-subtask"
+                />
+                <Button
+                  type="button"
+                  size="icon"
+                  onClick={handleAddSubtask}
+                  disabled={!newSubtaskTitle.trim()}
+                  data-testid="button-add-subtask"
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          )}
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} data-testid="button-cancel">
