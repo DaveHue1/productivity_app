@@ -30,20 +30,21 @@ export function TaskItem({
   onDragEnd,
   showDate = false,
 }: TaskItemProps) {
-  const taskType = TASK_TYPES[task.type];
+  const taskType = TASK_TYPES[task.type as keyof typeof TASK_TYPES];
   
   return (
     <div
       className={cn(
         "group flex items-center gap-3 rounded-lg p-4 transition-all",
-        "bg-card border border-card-border",
+        "border border-card-border",
         `priority-${task.priority}`,
-        task.completed && "opacity-60"
+        task.completed && "opacity-60",
+        !track && "bg-card"
       )}
       draggable={draggable}
       onDragStart={onDragStart ? (e) => onDragStart(e, task) : undefined}
       onDragEnd={onDragEnd}
-      style={track ? { backgroundColor: `${track.color}15` } : undefined}
+      style={track ? { backgroundColor: `${track.color}30`, borderColor: `${track.color}60` } : undefined}
       data-testid={`task-item-${task.id}`}
     >
       {draggable && (

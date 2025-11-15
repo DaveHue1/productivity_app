@@ -1,8 +1,10 @@
 import { useMemo, useRef } from "react";
 import { format, parseISO } from "date-fns";
-import type { Task } from "@shared/schema";
+import { useQuery } from "@tanstack/react-query";
+import type { Task, Subtask } from "@shared/schema";
 import { TASK_TYPES } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Download } from "lucide-react";
 import html2canvas from "html2canvas";
 
@@ -10,6 +12,57 @@ interface TimeBlockCalendarProps {
   date: Date;
   tasks: Task[];
   onTaskClick?: (task: Task) => void;
+}
+
+function TaskBlock({ task, position, taskType, onTaskClick }: { 
+  task: Task; 
+  position: { top: number; height: number }; 
+  taskType: any; 
+  onTaskClick?: (task: Task) => void;
+}) {
+  const { data: subtasks = [] } = useQuery<Subtask[]>({
+    queryKey: ["/api/tasks", task.id, "subtasks"],
+    enabled: !!task.id && position.height > 80,
+    staleTime: 60000,
+  });
+
+  return (
+    <div
+      className="absolute left-0 right-0 mx-2 rounded-lg p-2 cursor-pointer hover:opacity-90 transition-opacity overflow-hidden"
+      style={{
+        top: `${position.top}px`,
+        height: `${position.height}px`,
+        backgroundColor: taskType?.color || "#8b5cf6",
+        color: "white",
+        zIndex: 10,
+      }}
+      onClick={() => onTaskClick?.(task)}
+    >
+      <div className="text-sm font-semibold truncate">
+        {taskType?.icon} {task.title}
+      </div>
+      {position.height > 40 && (
+        <div className="text-xs opacity-90 mt-1 truncate">
+          {task.startTime} - {task.endTime}
+        </div>
+      )}
+      {position.height > 80 && subtasks.length > 0 && (
+        <div className="text-xs mt-2 space-y-1 max-h-[120px] overflow-y-auto">
+          {subtasks.map((subtask) => (
+            <div key={subtask.id} className="flex items-center gap-1 opacity-90">
+              <Checkbox 
+                checked={subtask.completed} 
+                className="h-3 w-3 border-white pointer-events-none" 
+              />
+              <span className={`truncate ${subtask.completed ? "line-through" : ""}`}>
+                {subtask.title}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function TimeBlockCalendar({ date, tasks, onTaskClick }: TimeBlockCalendarProps) {
@@ -70,7 +123,7 @@ export function TimeBlockCalendar({ date, tasks, onTaskClick }: TimeBlockCalenda
       
       <div 
         ref={calendarRef}
-        className="bg-white rounded-lg border border-border p-4 relative"
+        className="bg-white rounded-lg border border-border p-4 relative overflow-y-auto max-h-[800px]"
         style={{ minHeight: "1440px" }}
       >
         {hours.map((hour) => (
@@ -93,27 +146,13 @@ export function TimeBlockCalendar({ date, tasks, onTaskClick }: TimeBlockCalenda
             const taskType = TASK_TYPES[task.type as keyof typeof TASK_TYPES];
             
             return (
-              <div
+              <TaskBlock
                 key={task.id}
-                className="absolute left-0 right-0 mx-2 rounded-lg p-2 cursor-pointer hover:opacity-90 transition-opacity"
-                style={{
-                  top: `${position.top}px`,
-                  height: `${position.height}px`,
-                  backgroundColor: taskType?.color || "#8b5cf6",
-                  color: "white",
-                  zIndex: 10,
-                }}
-                onClick={() => onTaskClick?.(task)}
-              >
-                <div className="text-sm font-semibold truncate">
-                  {taskType?.icon} {task.title}
-                </div>
-                {position.height > 40 && (
-                  <div className="text-xs opacity-90 mt-1 truncate">
-                    {task.startTime} - {task.endTime}
-                  </div>
-                )}
-              </div>
+                task={task}
+                position={position}
+                taskType={taskType}
+                onTaskClick={onTaskClick}
+              />
             );
           })}
         </div>

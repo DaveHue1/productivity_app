@@ -9,6 +9,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { TaskItem } from "@/components/task-item";
 import { TaskDialog } from "@/components/task-dialog";
 import { TrackDialog } from "@/components/track-dialog";
+import { ProjectDialog } from "@/components/project-dialog";
 import { CalendarView } from "@/components/calendar-view";
 import { StatisticsDashboard } from "@/components/statistics-dashboard";
 import { PomodoroTimer } from "@/components/pomodoro-timer";
@@ -42,13 +43,16 @@ export default function Dashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
   const [trackDialogOpen, setTrackDialogOpen] = useState(false);
+  const [projectDialogOpen, setProjectDialogOpen] = useState(false);
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [pomodoroOpen, setPomodoroOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | undefined>();
   const [editingTrack, setEditingTrack] = useState<Track | undefined>();
+  const [editingProject, setEditingProject] = useState<Project | undefined>();
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [selectedTrackForProject, setSelectedTrackForProject] = useState<string | null>(null);
 
   // Fetch data
   const { data: tasks = [], isLoading: tasksLoading, error: tasksError } = useQuery<Task[]>({
@@ -63,7 +67,7 @@ export default function Dashboard() {
     queryKey: ["/api/projects"],
   });
 
-  const { data: pomodoroSessions = [], isLoading: pomodoroLoading } = useQuery({
+  const { data: pomodoroSessions = [], isLoading: pomodoroLoading } = useQuery<any[]>({
     queryKey: ["/api/pomodoro-sessions"],
   });
 
@@ -114,6 +118,30 @@ export default function Dashboard() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tracks"] });
       toast({ title: "Track deleted successfully" });
+    },
+  });
+
+  const createProjectMutation = useMutation({
+    mutationFn: (project: any) => apiRequest("POST", "/api/projects", project),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      toast({ title: "Project created successfully" });
+    },
+  });
+
+  const updateProjectMutation = useMutation({
+    mutationFn: ({ id, ...project }: any) => apiRequest("PATCH", `/api/projects/${id}`, project),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      toast({ title: "Project updated successfully" });
+    },
+  });
+
+  const deleteProjectMutation = useMutation({
+    mutationFn: (id: string) => apiRequest("DELETE", `/api/projects/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      toast({ title: "Project deleted successfully" });
     },
   });
 
@@ -210,7 +238,7 @@ export default function Dashboard() {
   const todaysTasks = filteredTasks
     .filter((task) => isToday(task.date) || (task.endDate && isToday(task.endDate)))
     .sort((a, b) => {
-      const priorityOrder = { high: 0, medium: 1, low: 2 };
+      const priorityOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };
       return priorityOrder[a.priority] - priorityOrder[b.priority];
     });
 
@@ -235,6 +263,16 @@ export default function Dashboard() {
       createTrackMutation.mutate(track);
     }
     setEditingTrack(undefined);
+  };
+
+  const handleProjectSave = (project: any) => {
+    if ("id" in project) {
+      updateProjectMutation.mutate(project);
+    } else {
+      createProjectMutation.mutate(project);
+    }
+    setEditingProject(undefined);
+    setSelectedTrackForProject(null);
   };
 
   const handleToggleComplete = (taskId: string, completed: boolean) => {
@@ -451,43 +489,16 @@ export default function Dashboard() {
                 )}
               </Card>
 
-              {/* Upcoming Timeline */}
+              {/* Timeline */}
               <Card className="p-6">
-                <h2 className="text-2xl font-semibold mb-6">Upcoming Tasks</h2>
-                {tasksLoading ? (
-                  <div className="space-y-3">
-                    {[1, 2].map((i) => (
-                      <div key={i} className="flex items-center gap-3 p-4 rounded-lg bg-card border">
-                        <Skeleton className="h-5 w-5" />
-                        <div className="flex-1 space-y-2">
-                          <Skeleton className="h-5 w-2/3" />
-                          <Skeleton className="h-4 w-1/3" />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : upcomingTasks.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <p>No upcoming tasks</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {upcomingTasks.map((task) => (
-                      <TaskItem
-                        key={task.id}
-                        task={task}
-                        track={tracks.find((t) => t.id === task.trackId)}
-                        onToggleComplete={handleToggleComplete}
-                        onEdit={(task) => {
-                          setEditingTask(task);
-                          setTaskDialogOpen(true);
-                        }}
-                        onDelete={(id) => deleteTaskMutation.mutate(id)}
-                        showDate
-                      />
-                    ))}
-                  </div>
-                )}
+                <HorizontalTimeline
+                  tasks={filteredTasks}
+                  tracks={tracks}
+                  onTaskClick={(task) => {
+                    setEditingTask(task);
+                    setTaskDialogOpen(true);
+                  }}
+                />
               </Card>
             </div>
           )}
@@ -523,7 +534,7 @@ export default function Dashboard() {
           {view === "tracks" && (
             <Card className="p-6">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-semibold">Tracks</h2>
+                <h2 className="text-2xl font-semibold">Tracks & Projects</h2>
                 <Button onClick={() => setTrackDialogOpen(true)} data-testid="button-create-track">
                   <Plus className="h-4 w-4 mr-2" />
                   New Track
@@ -531,12 +542,15 @@ export default function Dashboard() {
               </div>
 
               {tracksLoading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="space-y-6">
                   {[1, 2, 3].map((i) => (
-                    <Card key={i} className="p-4">
-                      <Skeleton className="h-6 w-32 mb-3" />
-                      <Skeleton className="h-4 w-24" />
-                    </Card>
+                    <div key={i}>
+                      <Skeleton className="h-8 w-48 mb-3" />
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        <Skeleton className="h-24 w-full" />
+                        <Skeleton className="h-24 w-full" />
+                      </div>
+                    </div>
                   ))}
                 </div>
               ) : tracks.length === 0 ? (
@@ -545,51 +559,130 @@ export default function Dashboard() {
                   <p>No tracks yet. Create one to organize your tasks!</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="space-y-6">
                   {tracks.map((track) => {
                     const trackTasks = tasks.filter((t) => t.trackId === track.id);
                     const completedCount = trackTasks.filter((t) => t.completed).length;
+                    const trackProjects = projects.filter((p) => p.trackId === track.id);
 
                     return (
-                      <Card
-                        key={track.id}
-                        className="p-4"
-                        style={{ borderLeftColor: track.color, borderLeftWidth: "4px" }}
-                        data-testid={`track-card-${track.id}`}
-                      >
+                      <div key={track.id} data-testid={`track-section-${track.id}`}>
                         <div className="flex items-center justify-between mb-3">
-                          <h3 className="font-semibold" style={{ color: track.color }}>
-                            {track.name}
-                          </h3>
-                          <div className="flex gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={() => {
-                                setEditingTrack(track);
-                                setTrackDialogOpen(true);
-                              }}
-                              data-testid={`button-edit-track-${track.id}`}
-                            >
-                              ✏️
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-destructive"
-                              onClick={() => deleteTrackMutation.mutate(track.id)}
-                              data-testid={`button-delete-track-${track.id}`}
-                            >
-                              🗑️
-                            </Button>
+                          <div className="flex items-center gap-3">
+                            <h3 className="text-xl font-semibold" style={{ color: track.color }}>
+                              {track.name}
+                            </h3>
+                            <div className="flex gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7"
+                                onClick={() => {
+                                  setEditingTrack(track);
+                                  setTrackDialogOpen(true);
+                                }}
+                                data-testid={`button-edit-track-${track.id}`}
+                              >
+                                ✏️
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-destructive"
+                                onClick={() => deleteTrackMutation.mutate(track.id)}
+                                data-testid={`button-delete-track-${track.id}`}
+                              >
+                                🗑️
+                              </Button>
+                            </div>
                           </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedTrackForProject(track.id);
+                              setProjectDialogOpen(true);
+                            }}
+                            data-testid={`button-create-project-${track.id}`}
+                          >
+                            <Plus className="h-3 w-3 mr-1" />
+                            New Project
+                          </Button>
                         </div>
-                        <p className="text-sm text-muted-foreground">
+                        
+                        <p className="text-sm text-muted-foreground mb-3">
                           {trackTasks.length} task{trackTasks.length !== 1 ? "s" : ""} •{" "}
-                          {completedCount} completed
+                          {completedCount} completed • {trackProjects.length} project{trackProjects.length !== 1 ? "s" : ""}
                         </p>
-                      </Card>
+
+                        {trackProjects.length > 0 ? (
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                            {trackProjects.map((project) => {
+                              const projectTasks = tasks.filter((t) => t.projectId === project.id);
+                              const projectCompletedCount = projectTasks.filter((t) => t.completed).length;
+
+                              return (
+                                <Card
+                                  key={project.id}
+                                  className="p-3"
+                                  style={{ 
+                                    borderLeftColor: project.color || track.color, 
+                                    borderLeftWidth: "3px" 
+                                  }}
+                                  data-testid={`project-card-${project.id}`}
+                                >
+                                  <div className="flex items-start justify-between mb-2">
+                                    <div className="flex-1 min-w-0">
+                                      <h4 
+                                        className="font-medium text-sm truncate" 
+                                        style={{ color: project.color || track.color }}
+                                      >
+                                        {project.name}
+                                      </h4>
+                                      {project.description && (
+                                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                                          {project.description}
+                                        </p>
+                                      )}
+                                    </div>
+                                    <div className="flex gap-1 ml-2">
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-6 w-6"
+                                        onClick={() => {
+                                          setEditingProject(project);
+                                          setProjectDialogOpen(true);
+                                        }}
+                                        data-testid={`button-edit-project-${project.id}`}
+                                      >
+                                        ✏️
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-6 w-6 text-destructive"
+                                        onClick={() => deleteProjectMutation.mutate(project.id)}
+                                        data-testid={`button-delete-project-${project.id}`}
+                                      >
+                                        🗑️
+                                      </Button>
+                                    </div>
+                                  </div>
+                                  <p className="text-xs text-muted-foreground">
+                                    {projectTasks.length} task{projectTasks.length !== 1 ? "s" : ""} •{" "}
+                                    {projectCompletedCount} completed
+                                  </p>
+                                </Card>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <div className="text-center py-6 text-sm text-muted-foreground border rounded-md border-dashed">
+                            No projects yet. Click "New Project" to add one.
+                          </div>
+                        )}
+                      </div>
                     );
                   })}
                 </div>
@@ -622,6 +715,26 @@ export default function Dashboard() {
           }}
           track={editingTrack}
           onSave={handleTrackSave}
+        />
+
+        <ProjectDialog
+          open={projectDialogOpen}
+          onOpenChange={(open) => {
+            setProjectDialogOpen(open);
+            if (!open) {
+              setEditingProject(undefined);
+              setSelectedTrackForProject(null);
+            }
+          }}
+          project={editingProject}
+          tracks={tracks}
+          onSave={(project) => {
+            if (selectedTrackForProject && !editingProject) {
+              handleProjectSave({ ...project, trackId: selectedTrackForProject });
+            } else {
+              handleProjectSave(project);
+            }
+          }}
         />
 
         <ExportDialog

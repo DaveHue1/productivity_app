@@ -132,6 +132,7 @@ export function TaskDialog({ open, onOpenChange, task, tracks, onSave }: TaskDia
   const [isRecurring, setIsRecurring] = useState(false);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
   const [subtasks, setSubtasks] = useState<Subtask[]>([]);
+  const [pendingSubtasks, setPendingSubtasks] = useState<Array<{ title: string; completed: boolean }>>([]);
 
   // Fetch subtasks when editing a task
   const { data: fetchedSubtasks } = useQuery<Subtask[]>({
@@ -212,6 +213,7 @@ export function TaskDialog({ open, onOpenChange, task, tracks, onSave }: TaskDia
       setHasTime(false);
       setIsRecurring(false);
       setSubtasks([]);
+      setPendingSubtasks([]);
     }
   }, [task, open]);
 
@@ -222,14 +224,20 @@ export function TaskDialog({ open, onOpenChange, task, tracks, onSave }: TaskDia
   }, [fetchedSubtasks]);
 
   const handleAddSubtask = () => {
-    if (!newSubtaskTitle.trim() || !task?.id) return;
+    if (!newSubtaskTitle.trim()) return;
 
-    createSubtaskMutation.mutate({
-      taskId: task.id,
-      title: newSubtaskTitle,
-      completed: false,
-      order: subtasks.length,
-    });
+    if (task?.id) {
+      // If editing existing task, create subtask immediately
+      createSubtaskMutation.mutate({
+        taskId: task.id,
+        title: newSubtaskTitle,
+        completed: false,
+        order: subtasks.length,
+      });
+    } else {
+      // If creating new task, add to pending subtasks
+      setPendingSubtasks([...pendingSubtasks, { title: newSubtaskTitle, completed: false }]);
+    }
     setNewSubtaskTitle("");
   };
 
@@ -272,12 +280,51 @@ export function TaskDialog({ open, onOpenChange, task, tracks, onSave }: TaskDia
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (task) {
       onSave({ ...task, ...formData });
     } else {
+      // Save task first through proper mutation
       onSave(formData);
+      
+      // Create pending subtasks after task is created (if any)
+      if (pendingSubtasks.length > 0) {
+        // Wait a bit for the task to be created and get its ID from the query invalidation
+        setTimeout(async () => {
+          try {
+            // Fetch the newly created task to get its ID
+            const tasksResponse = await fetch("/api/tasks");
+            const allTasks = await tasksResponse.json();
+            const newestTask = allTasks
+              .filter((t: Task) => t.title === formData.title)
+              .sort((a: Task, b: Task) => 
+                new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+              )[0];
+
+            if (newestTask) {
+              // Create all subtasks
+              for (let i = 0; i < pendingSubtasks.length; i++) {
+                const subtask = pendingSubtasks[i];
+                await apiRequest("POST", "/api/subtasks", {
+                  taskId: newestTask.id,
+                  title: subtask.title,
+                  completed: subtask.completed,
+                  order: i,
+                });
+              }
+              queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+            }
+          } catch (error) {
+            console.error("Failed to create subtasks:", error);
+            toast({ 
+              title: "Subtasks creation failed", 
+              description: "The task was created but subtasks could not be added",
+              variant: "destructive"
+            });
+          }
+        }, 500);
+      }
     }
     onOpenChange(false);
   };
@@ -524,59 +571,97 @@ export function TaskDialog({ open, onOpenChange, task, tracks, onSave }: TaskDia
             )}
           </div>
 
-          {task && (
-            <div className="space-y-3 pt-4 border-t">
-              <Label className="text-base">Subtasks</Label>
-              
-              {subtasks.length > 0 && (
-                <DndContext
-                  sensors={sensors}
-                  collisionDetection={closestCenter}
-                  onDragEnd={handleDragEnd}
+          <div className="space-y-3 pt-4 border-t">
+            <Label className="text-base">Subtasks</Label>
+            
+            {task && subtasks.length > 0 && (
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext
+                  items={subtasks.map(st => st.id)}
+                  strategy={verticalListSortingStrategy}
                 >
-                  <SortableContext
-                    items={subtasks.map(st => st.id)}
-                    strategy={verticalListSortingStrategy}
-                  >
-                    <div className="space-y-2">
-                      {subtasks.map((subtask) => (
-                        <SortableSubtaskItem
-                          key={subtask.id}
-                          subtask={subtask}
-                          onToggle={() => handleToggleSubtask(subtask)}
-                          onDelete={() => handleDeleteSubtask(subtask.id)}
-                        />
-                      ))}
-                    </div>
-                  </SortableContext>
-                </DndContext>
-              )}
+                  <div className="space-y-2">
+                    {subtasks.map((subtask) => (
+                      <SortableSubtaskItem
+                        key={subtask.id}
+                        subtask={subtask}
+                        onToggle={() => handleToggleSubtask(subtask)}
+                        onDelete={() => handleDeleteSubtask(subtask.id)}
+                      />
+                    ))}
+                  </div>
+                </SortableContext>
+              </DndContext>
+            )}
 
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Add a subtask..."
-                  value={newSubtaskTitle}
-                  onChange={(e) => setNewSubtaskTitle(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      handleAddSubtask();
-                    }
-                  }}
-                  data-testid="input-new-subtask"
-                />
-                <Button
-                  type="button"
-                  size="icon"
-                  onClick={handleAddSubtask}
-                  disabled={!newSubtaskTitle.trim()}
-                  data-testid="button-add-subtask"
-                >
-                  <Plus className="w-4 h-4" />
-                </Button>
+            {!task && pendingSubtasks.length > 0 && (
+              <div className="space-y-2">
+                {pendingSubtasks.map((subtask, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center gap-2 p-2 bg-muted/50 rounded-md"
+                    data-testid={`pending-subtask-item-${index}`}
+                  >
+                    <Checkbox
+                      checked={subtask.completed}
+                      onCheckedChange={(checked) => {
+                        const newPending = [...pendingSubtasks];
+                        newPending[index].completed = checked as boolean;
+                        setPendingSubtasks(newPending);
+                      }}
+                      data-testid={`checkbox-pending-subtask-${index}`}
+                    />
+                    <span
+                      className={`flex-1 text-sm ${subtask.completed ? "line-through text-muted-foreground" : ""}`}
+                      data-testid={`text-pending-subtask-title-${index}`}
+                    >
+                      {subtask.title}
+                    </span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        setPendingSubtasks(pendingSubtasks.filter((_, i) => i !== index));
+                      }}
+                      className="h-7 w-7"
+                      data-testid={`button-delete-pending-subtask-${index}`}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ))}
               </div>
+            )}
+
+            <div className="flex gap-2">
+              <Input
+                placeholder="Add a subtask..."
+                value={newSubtaskTitle}
+                onChange={(e) => setNewSubtaskTitle(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleAddSubtask();
+                  }
+                }}
+                data-testid="input-new-subtask"
+              />
+              <Button
+                type="button"
+                size="icon"
+                onClick={handleAddSubtask}
+                disabled={!newSubtaskTitle.trim()}
+                data-testid="button-add-subtask"
+              >
+                <Plus className="w-4 h-4" />
+              </Button>
             </div>
-          )}
+          </div>
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} data-testid="button-cancel">

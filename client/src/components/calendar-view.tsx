@@ -13,7 +13,6 @@ import {
 import { TASK_TYPES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { TimeBlockCalendar } from "@/components/time-block-calendar";
-import { DragDropTaskList } from "@/components/drag-drop-task-list";
 
 interface CalendarViewProps {
   tasks: Task[];
@@ -104,7 +103,7 @@ export function CalendarView({ tasks, tracks, onDateClick, onTaskClick, onTaskUp
           <div className="space-y-1">
             {dayTasks.slice(0, 3).map((task) => {
               const track = getTrackForTask(task);
-              const taskType = TASK_TYPES[task.type];
+              const taskType = TASK_TYPES[task.type as keyof typeof TASK_TYPES];
               
               return (
                 <div
@@ -196,24 +195,13 @@ export function CalendarView({ tasks, tracks, onDateClick, onTaskClick, onTaskUp
       </Card>
 
       {selectedDateStr && (
-        <>
-          <Card className="p-6">
-            <TimeBlockCalendar
-              date={new Date(selectedDateStr)}
-              tasks={tasks}
-              onTaskClick={onTaskClick}
-            />
-          </Card>
-          
-          <Card className="p-6">
-            <DragDropTaskList
-              tasks={getTasksForSelectedDate()}
-              tracks={tracks}
-              onTaskUpdate={onTaskUpdate}
-              onTaskClick={onTaskClick}
-            />
-          </Card>
-        </>
+        <Card className="p-6">
+          <TimeBlockCalendar
+            date={new Date(selectedDateStr)}
+            tasks={tasks}
+            onTaskClick={onTaskClick}
+          />
+        </Card>
       )}
     </div>
   );
