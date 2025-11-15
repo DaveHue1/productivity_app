@@ -1,0 +1,3521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>College Organizer</title>
+    <!-- Tailwind CSS CDN for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for a professional, minimalist look */
+        body {
+            /* Using a system font, which is pre-installed on most platforms */
+            font-family: "Segoe UI Emoji", sans-serif;
+        }
+
+
+
+        .gradient-background {
+            /* Updated to yellow and purple only */
+            background: linear-gradient(-45deg, #fde047, #5b21b6);
+            background-size: 400% 400%;
+            animation: gradient-shift 30s ease infinite;
+        }
+
+        @keyframes gradient-shift {
+            0% {
+                background-position: 0% 50%;
+            }
+
+            50% {
+                background-position: 100% 50%;
+            }
+
+            100% {
+                background-position: 0% 50%;
+            }
+        }
+
+        .container {
+            max-width: 1200px;
+        }
+
+        .outer-panel {
+            background-color: #5b21b6; /* Deep purple-900 background */
+        }
+
+        .card {
+            background-color: #6d28d9; /* A slightly lighter purple */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            border: 1px solid #7c3aed; /* Subtle border for definition */
+        }
+
+        .calendar-day {
+            min-height: 8rem;
+            transition: all 0.2s ease-in-out;
+            cursor: pointer;
+        }
+
+            .calendar-day:hover {
+                transform: translateY(-1px);
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            }
+
+        .greeting-text {
+            animation: fade-in-top 1s ease-out forwards;
+        }
+
+        @keyframes fade-in-top {
+            0% {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .page-container {
+            display: none;
+        }
+
+            .page-container.active {
+                display: block;
+            }
+
+        .timeline-item {
+            position: relative;
+            background-color: #a78bfa; /* A light, soft purple */
+            min-width: 7rem;
+            height: 8rem;
+            transition: transform 0.2s ease-in-out;
+            border-radius: 0.5rem;
+        }
+
+            .timeline-item:not(:last-child)::after {
+                content: '';
+                position: absolute;
+                top: 50%;
+                left: calc(100% - 1px);
+                transform: translateY(-50%);
+                width: 4rem; /* Length of the connecting line */
+                height: 2px;
+                background-color: #8b5cf6; /* A slightly darker purple line */
+                z-index: -1;
+            }
+        /* No more hover panel styles, tasks are now inline */
+
+        /* Custom styles for today's tasks list items */
+        .today-task-item {
+            background-color: #a78bfa;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            transition: background-color 0.2s ease-in-out;
+        }
+
+            .today-task-item.empty {
+                background-color: #e5e7eb; /* Light gray for empty slots */
+            }
+
+            /* NEW: CSS overrides for tasks that have a track color */
+            .today-task-item.has-track-color {
+                color: white; /* Default text color is white */
+            }
+                /* Override Tailwind classes for dark track backgrounds */
+                .today-task-item.has-track-color .text-black {
+                    color: white !important;
+                }
+
+                .today-task-item.has-track-color .text-gray-800 {
+                    color: #e5e7eb !important; /* light gray */
+                }
+
+                .today-task-item.has-track-color .text-gray-600 {
+                    color: #d1d5db !important; /* lighter gray for line-through */
+                }
+
+                .today-task-item.has-track-color .text-sm.text-black {
+                    color: white !important;
+                }
+
+        /* NEW: Drag-and-drop styles */
+        .dragging {
+            opacity: 0.5;
+            border: 2px dashed #fde047; /* Yellow dashed border */
+        }
+
+        .drag-over {
+            /* Visual cue for drop target */
+            background-color: #7c3aed; /* Slightly lighter purple */
+            transform: scale(1.02);
+        }
+
+        /* NEW: Style for the task type icons */
+        .task-icon {
+            font-size: 1.25rem;
+            flex-shrink: 0;
+            width: 28px; /* Fixed width for alignment */
+        }
+
+        /* NEW: File input styling */
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+
+            .file-input-wrapper input[type=file] {
+                position: absolute;
+                left: 0;
+                top: 0;
+                opacity: 0;
+                width: 100%;
+                height: 100%;
+                cursor: pointer;
+            }
+
+
+
+        /* NEW: Multi-day form styling */
+        .multi-day-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .date-inputs {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+            .date-inputs span {
+                color: #c4b5fd;
+                font-size: 0.9rem;
+            }
+        /* NEW: Time blocking styles */
+        .time-block {
+            height: 60px; /* 1 hour block - you can make this larger for more detail */
+            border-bottom: 1px solid #8b5cf6;
+            position: relative;
+        }
+
+        .time-label {
+            width: 60px;
+            text-align: right;
+            padding-right: 10px;
+            font-size: 0.75rem;
+            color: #c4b5fd;
+        }
+
+        .time-block-content {
+            flex: 1;
+            position: relative;
+        }
+
+        .scheduled-task {
+            position: absolute;
+            left: 2px;
+            right: 2px;
+            border-radius: 4px;
+            padding: 4px 6px;
+            font-size: 0.7rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            z-index: 1;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-sizing: border-box;
+            color: white;
+            font-weight: 500;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+            .scheduled-task:hover {
+                transform: scale(1.02);
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+                z-index: 2;
+            }
+
+            /* Ensure text is readable on colored backgrounds */
+            .scheduled-task * {
+                color: white !important;
+                text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+            }
+
+
+        .time-blocking-grid {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .time-block-highlight {
+            background-color: rgba(139, 92, 246, 0.1);
+        }
+    </style>
+</head>
+<body class="gradient-background text-white p-8 sm:p-12">
+
+    <!-- Greeting Page Container -->
+    <div id="greeting-page" class="page-container active">
+        <!-- Top Section: Animated Greeting -->
+        <header class="text-left mb-12">
+            <h1 class="text-4xl font-semibold greeting-text">GREETINGS, DAVID</h1>
+            <!-- NEW: Save/Load buttons -->
+            <div class="flex space-x-4 mt-4">
+                <button id="save-data-btn" class="p-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200">
+                    Save Data to File
+                </button>
+                <div class="file-input-wrapper">
+                    <button class="p-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200">
+                        Load Data from File
+                    </button>
+                    <input type="file" id="load-data-input" accept=".json" class="file-input">
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content Panel -->
+        <div class="outer-panel p-6 sm:p-8 rounded-xl shadow-lg">
+            <!-- Middle Section: Today's Tasks & Calendar Access -->
+            <div class="flex flex-col md:flex-row gap-8 mb-8">
+                <!-- Left Panel: Today's Tasks -->
+                <div class="card p-6 sm:p-8 rounded-xl md:w-1/3">
+                    <!-- UPDATED: from md:w-1/2 -->
+                    <h2 class="text-2xl font-semibold mb-4">TODAY'S TASKS</h2>
+                    <ul id="today-tasks-list" class="space-y-3 mb-6">
+                        <!-- Today's tasks will be displayed here by JavaScript -->
+                    </ul>
+                </div>
+
+                <!-- Right Panel: Calendar Access -->
+                <div class="card p-6 sm:p-8 rounded-xl md:w-1/3">
+                    <!-- UPDATED: from md:w-1/2 -->
+                    <h2 class="text-2xl font-semibold mb-4">CALENDAR</h2>
+                    <div class="grid grid-cols-7 gap-1 text-center">
+                        <div class="text-sm font-semibold text-gray-200 hidden sm:block">S</div>
+                        <div class="text-sm font-semibold text-gray-200 hidden sm:block">M</div>
+                        <div class="text-sm font-semibold text-gray-200 hidden sm:block">T</div>
+                        <div class="text-sm font-semibold text-gray-200 hidden sm:block">W</div>
+                        <div class="text-sm font-semibold text-gray-200 hidden sm:block">T</div>
+                        <div class="text-sm font-semibold text-gray-200 hidden sm:block">F</div>
+                        <div class="text-sm font-semibold text-gray-200 hidden sm:block">S</div>
+                    </div>
+                    <div id="calendar-grid-preview" class="grid grid-cols-7 gap-1 mt-2 justify-items-center">
+                        <!-- A preview of the calendar grid will be generated here -->
+                    </div>
+                    <button id="open-calendar-btn" class="mt-4 p-4 bg-purple-900 text-white rounded-lg hover:bg-purple-800 transition-colors duration-200 w-full text-center">
+                        OPEN CALENDAR
+                    </button>
+                </div>
+
+                <!-- NEW: Tracks Panel -->
+                <div class="card p-6 sm:p-8 rounded-xl md:w-1/3">
+                    <h2 class="text-2xl font-semibold mb-4">TRACKS</h2>
+                    <p class="text-gray-300 mb-4">Organize your long-term goals and habits.</p>
+                    <button id="open-tracks-btn" class="mt-4 p-4 bg-purple-900 text-white rounded-lg hover:bg-purple-800 transition-colors duration-200 w-full text-center">
+                        OPEN TRACKS
+                    </button>
+                </div>
+            </div>
+
+            <!-- Bottom Section: Upcoming Tasks Timeline -->
+            <div class="card p-6 sm:p-8 rounded-xl overflow-x-auto">
+                <h2 class="text-2xl font-semibold mb-4">TIMELINE</h2>
+
+                <!-- NEW: Timeline Filter Buttons -->
+                <div id="timeline-filter-buttons" class="flex flex-wrap gap-2 mb-4">
+                    <!-- Filter buttons will be generated here -->
+                </div>
+                <!-- END NEW -->
+
+                <div id="upcoming-tasks-timeline" class="flex flex-row space-x-4 pb-4">
+                    <!-- Upcoming task cards will be generated here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Calendar Page Container -->
+    <div id="calendar-page" class="page-container">
+        <div class="container mx-auto">
+            <header class="text-center mb-12">
+                <button id="go-home-btn" class="absolute top-8 left-8 p-3 rounded-lg bg-purple-900 text-white hover:bg-purple-800 transition-colors duration-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                    </svg>
+                </button>
+                <h1 class="text-4xl font-semibold">COLLEGE ASSIGNMENT HUB</h1>
+            </header>
+
+            <div class="card p-6 sm:p-8 rounded-xl mb-8">
+                <div class="flex justify-between items-center mb-6">
+                    <button id="prev-month" class="text-gray-400 hover:text-white transition-colors duration-200">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                        </svg>
+                    </button>
+                    <h2 id="current-month-year" class="text-2xl font-medium"></h2>
+                    <button id="next-month" class="text-gray-400 hover:text-white transition-colors duration-200">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-7 gap-1 sm:gap-4 text-center">
+                    <div class="text-sm font-semibold text-gray-300 hidden sm:block">SUN</div>
+                    <div class="text-sm font-semibold text-gray-300 hidden sm:block">MON</div>
+                    <div class="text-sm font-semibold text-gray-300 hidden sm:block">TUE</div>
+                    <div class="text-sm font-semibold text-gray-300 hidden sm:block">WED</div>
+                    <div class="text-sm font-semibold text-gray-300 hidden sm:block">THU</div>
+                    <div class="text-sm font-semibold text-gray-300 hidden sm:block">FRI</div>
+                    <div class="text-sm font-semibold text-gray-300 hidden sm:block">SAT</div>
+                </div>
+                <div id="calendar-grid" class="grid grid-cols-7 gap-1 sm:gap-4 mt-2">
+                    <!-- Calendar days will be generated here by JavaScript -->
+                </div>
+            </div>
+
+            <!-- NEW: Time Blocking Section -->
+            <div id="time-blocking-section" class="card p-6 sm:p-8 rounded-xl mb-8 hidden">
+                <h2 id="time-blocking-title" class="text-2xl font-semibold mb-4">DAILY SCHEDULE</h2>
+                <div class="time-blocking-grid">
+                    <div id="time-blocks-container" class="flex flex-col">
+                        <!-- Time blocks will be generated here -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="card p-6 sm:p-8 rounded-xl">
+                <h2 id="tasks-title" class="text-2xl font-semibold mb-4">TASKS FOR TODAY</h2>
+                <ul id="task-list" class="space-y-3 mb-6">
+                    <!-- Tasks will be displayed here -->
+                </ul>
+
+                <!-- START: Add Task Form -->
+                <!-- START: Add Task Form -->
+                <div class="flex flex-wrap items-center gap-2">
+                    <!-- NEW: Type Selector -->
+                    <select id="new-task-type-select" class="p-3 rounded-lg border border-gray-300 text-black focus:outline-none focus:ring-1 focus:ring-purple-500">
+                        <option value="task">Task</option>
+                        <option value="event">Event</option>
+                        <option value="deadline">Deadline</option>
+                    </select>
+
+                    <input type="text" id="new-task-input" class="flex-1 p-3 rounded-lg border border-gray-300 text-black focus:outline-none focus:ring-1 focus:ring-purple-500" placeholder="Add a new assignment...">
+
+                    <!-- Project Selector -->
+                    <select id="new-task-project-select" class="p-3 rounded-lg border border-gray-300 text-black focus:outline-none focus:ring-1 focus:ring-purple-500">
+                        <option value="">-- No Project --</option>
+                        <!-- Options will be populated by JS -->
+                    </select>
+
+                    <!-- NEW: Start Date Input -->
+                    <input type="date" id="new-task-start-date" class="p-3 rounded-lg border border-gray-300 text-black focus:outline-none focus:ring-1 focus:ring-purple-500">
+
+                    <!-- NEW: End Date Input (hidden by default) -->
+                    <input type="date" id="new-task-end-date" class="p-3 rounded-lg border border-gray-300 text-black focus:outline-none focus:ring-1 focus:ring-purple-500 hidden">
+
+                    <!-- NEW: Multi-day checkbox -->
+                    <div class="flex items-center space-x-2">
+                        <input type="checkbox" id="new-task-multi-day" class="w-4 h-4 rounded accent-purple-500">
+                        <label for="new-task-multi-day" class="text-sm text-white">Multi-day</label>
+                    </div>
+
+                    <!-- NEW: Event Time Input (hidden by default) -->
+                    <input type="time" id="new-task-event-time" class="p-3 rounded-lg border border-gray-300 text-black focus:outline-none focus:ring-1 focus:ring-purple-500 hidden">
+
+                    <!-- NEW: Task Start Time Input (visible for tasks) -->
+                    <input type="time" id="new-task-start-time" class="p-3 rounded-lg border border-gray-300 text-black focus:outline-none focus:ring-1 focus:ring-purple-500 hidden">
+                    <span id="new-task-time-separator" class="text-gray-400 items-center hidden self-center">to</span>
+                    <input type="time" id="new-task-end-time" class="p-3 rounded-lg border border-gray-300 text-black focus:outline-none focus:ring-1 focus:ring-purple-500 hidden">
+
+                    <!-- Task Time Inputs (visible by default) -->
+                    <div id="new-task-time-wrapper" class="flex gap-2">
+                        <input type="number" id="task-hours-input" class="w-20 p-3 rounded-lg border border-gray-300 text-black focus:outline-none focus:ring-1 focus:ring-purple-500" placeholder="hrs">
+                        <input type="number" id="task-minutes-input" class="w-20 p-3 rounded-lg border border-gray-300 text-black focus:outline-none focus:ring-1 focus:ring-purple-500" placeholder="min">
+                    </div>
+
+                    <button id="add-task-btn" class="p-3 bg-purple-900 text-white rounded-lg hover:bg-purple-800 transition-colors duration-200">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                    </button>
+                </div>
+                <!-- END: Add Task Form -->
+                <!-- END: Add Task Form -->
+
+            </div>
+        </div>
+    </div>
+
+    <!-- NEW: Tracks Page Container -->
+    <div id="tracks-page" class="page-container">
+        <div class="container mx-auto">
+            <header class="text-center mb-12">
+                <button id="go-home-from-tracks-btn" class="absolute top-8 left-8 p-3 rounded-lg bg-purple-900 text-white hover:bg-purple-800 transition-colors duration-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                    </svg>
+                </button>
+                <h1 class="text-4xl font-semibold">TRACKS</h1>
+            </header>
+
+            <!-- UPDATED: Renamed to tracks-card and given an ID -->
+            <div id="tracks-card" class="card p-6 sm:p-8 rounded-xl">
+                <h2 class="text-2xl font-semibold mb-4">Your Tracks</h2>
+
+                <!-- UPDATED: Add Track Input -->
+                <div class="flex items-center space-x-2 mb-6">
+                    <input type="text" id="new-track-input" class="flex-1 p-3 rounded-lg border border-gray-300 text-black focus:outline-none focus:ring-1 focus:ring-purple-500" placeholder="Add a new track (e.g., School, Work...)">
+                    <!-- NEW: Color picker for new tracks -->
+                    <input type="color" id="new-track-color" class="w-10 h-10 p-0 border-none rounded-md cursor-pointer" value="#6b21a8">
+                    <button id="add-track-btn" class="p-3 bg-purple-900 text-white rounded-lg hover:bg-purple-800 transition-colors duration-200">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- NEW: Tracks List -->
+                <ul id="tracks-list" class="space-y-3">
+                    <!-- Tracks will be dynamically inserted here -->
+                </ul>
+            </div>
+
+            <!-- NEW: Projects Card (hidden by default) -->
+            <div id="projects-card" class="card p-6 sm:p-8 rounded-xl mt-8 hidden">
+                <button id="back-to-tracks-btn" class="mb-4 text-gray-300 hover:text-white transition-colors flex items-center space-x-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                    </svg>
+                    <span>Back to all tracks</span>
+                </button>
+
+                <!-- NEW: Track Timeline -->
+                <div class="card p-4 sm:p-6 rounded-xl overflow-x-auto mb-6 bg-purple-900">
+                    <h3 class="text-xl font-semibold mb-4">TRACK TIMELINE</h3>
+                    <div id="track-timeline-scroller" class="flex flex-row space-x-4 pb-4">
+                        <!-- Timeline items for this track will be generated here -->
+                    </div>
+                </div>
+                <!-- End NEW Track Timeline -->
+
+                <h2 id="projects-card-title" class="text-2xl font-semibold mb-4">PROJECTS FOR...</h2>
+
+                <!-- Add Project Input -->
+                <div class="flex items-center space-x-2 mb-6">
+                    <input type="text" id="new-project-input" class="flex-1 p-3 rounded-lg border border-gray-300 text-black focus:outline-none focus:ring-1 focus:ring-purple-500" placeholder="Add a new project...">
+                    <button id="add-project-btn" class="p-3 bg-purple-900 text-white rounded-lg hover:bg-purple-800 transition-colors duration-200">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Projects List -->
+                <ul id="projects-list" class="space-y-3">
+                    <!-- Projects will be dynamically inserted here -->
+                </ul>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- JavaScript for app functionality -->
+    <script>
+        // Store tasks in a simple in-memory object
+        let tasks = {};
+        // NEW: Store tracks
+        let tracks = [];
+        // NEW: Keep track of which track is being viewed
+        let selectedTrackIndex = null;
+
+        // NEW: DOM elements for save/load
+        const saveDataBtn = document.getElementById('save-data-btn');
+        const loadDataInput = document.getElementById('load-data-input');
+
+        // NEW: DOM elements for time blocking
+        const timeBlockingSection = document.getElementById('time-blocking-section');
+        const timeBlockingTitle = document.getElementById('time-blocking-title');
+        const timeBlocksContainer = document.getElementById('time-blocks-container');
+
+        // Functions for saving and loading data
+        async function saveData() {
+            if (window.api && window.api.saveTasks) {
+                // NEW: Add tracks to the tasks object before saving
+                tasks.__tracks = tracks;
+                await window.api.saveTasks(tasks);
+                // NEW: Remove it immediately after so it doesn't break logic
+                delete tasks.__tracks;
+            }
+        }
+
+        async function loadData() {
+            if (window.api && window.api.loadTasks) {
+                const result = await window.api.loadTasks();
+                if (result.success && result.tasks) {
+                    tasks = result.tasks;
+                    // NEW: Extract tracks from the tasks object
+                    if (tasks.__tracks) {
+                        tracks = tasks.__tracks;
+                        delete tasks.__tracks; // Don't let it pollute date-based tasks
+
+                        // NEW: Ensure all tracks have a projects array for compatibility
+                        tracks.forEach(track => {
+                            if (!track.projects) {
+                                track.projects = [];
+                            }
+                            // NEW: Add color compatibility
+                            if (!track.color) {
+                                track.color = '#6b21a8'; // Default purple
+                            }
+                            // NEW: Add project color compatibility
+                            track.projects.forEach(project => {
+                                if (!project.color) {
+                                    project.color = track.color; // Default to parent track's color
+                                }
+                            });
+                        });
+                    } else {
+                        tracks = []; // Ensure tracks is an array
+                    }
+                }
+            }
+        }
+
+        // NEW: Function to export data as JSON file
+        function exportDataToFile() {
+            // Create a combined data object
+            const exportData = {
+                tasks: tasks,
+                tracks: tracks,
+                exportDate: new Date().toISOString(),
+                version: "1.0"
+            };
+
+            // Convert to JSON string
+            const dataStr = JSON.stringify(exportData, null, 2);
+
+            // Create a blob and download link
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+
+            // Create a temporary anchor element to trigger download
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `college-organizer-backup-${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            // Clean up the URL object
+            URL.revokeObjectURL(url);
+        }
+
+        // NEW: Function to import data from JSON file
+        function importDataFromFile(file) {
+            const reader = new FileReader();
+
+            reader.onload = function (e) {
+                try {
+                    const importedData = JSON.parse(e.target.result);
+
+                    // Validate the imported data structure
+                    if (importedData.tasks && importedData.tracks) {
+                        // Ask for confirmation before replacing current data
+                        if (confirm('This will replace all your current data. Are you sure?')) {
+                            tasks = importedData.tasks;
+                            tracks = importedData.tracks;
+
+                            // Refresh all views
+                            renderTodayTasks();
+                            renderUpcomingTasks();
+                            renderCalendar(currentDate);
+                            renderTracks();
+                            renderTimelineFilters();
+                            populateProjectDropdown();
+
+                            // Save to localStorage if available
+                            if (window.api && window.api.saveTasks) {
+                                saveData();
+                            }
+
+                            alert('Data imported successfully!');
+                        }
+                    } else {
+                        alert('Invalid file format. Please select a valid backup file.');
+                    }
+                } catch (error) {
+                    console.error('Error parsing JSON file:', error);
+                    alert('Error reading file. Please make sure it is a valid JSON file.');
+                }
+            };
+
+            reader.readAsText(file);
+        }
+
+        // DOM elements for page switching
+        const greetingPage = document.getElementById('greeting-page');
+        const calendarPage = document.getElementById('calendar-page');
+        const openCalendarBtn = document.getElementById('open-calendar-btn');
+        const goHomeBtn = document.getElementById('go-home-btn');
+
+        // NEW: DOM elements for Tracks page
+        const tracksPage = document.getElementById('tracks-page');
+        const openTracksBtn = document.getElementById('open-tracks-btn');
+        const goHomeFromTracksBtn = document.getElementById('go-home-from-tracks-btn');
+
+        // NEW: DOM elements for Tracks page functionality
+        const tracksCard = document.getElementById('tracks-card'); // Updated
+        const tracksList = document.getElementById('tracks-list');
+        const newTrackInput = document.getElementById('new-track-input');
+        const addTrackBtn = document.getElementById('add-track-btn');
+        const newTrackColorInput = document.getElementById('new-track-color'); // NEW
+
+        // NEW: DOM elements for Projects view
+        const projectsCard = document.getElementById('projects-card');
+        const backToTracksBtn = document.getElementById('back-to-tracks-btn');
+        const projectsCardTitle = document.getElementById('projects-card-title');
+        const newProjectInput = document.getElementById('new-project-input');
+        const addProjectBtn = document.getElementById('add-project-btn');
+        const projectsList = document.getElementById('projects-list');
+
+        // DOM elements for the greeting page
+        const todayTasksList = document.getElementById('today-tasks-list');
+        const upcomingTasksTimeline = document.getElementById('upcoming-tasks-timeline');
+        const calendarGridPreview = document.getElementById('calendar-grid-preview');
+
+        // DOM elements for the calendar page
+        const calendarGrid = document.getElementById('calendar-grid');
+        const currentMonthYear = document.getElementById('current-month-year');
+        const tasksTitle = document.getElementById('tasks-title');
+        const taskList = document.getElementById('task-list');
+        const newTaskInput = document.getElementById('new-task-input');
+        const taskHoursInput = document.getElementById('task-hours-input');
+        const taskMinutesInput = document.getElementById('task-minutes-input');
+        const addTaskBtn = document.getElementById('add-task-btn');
+        const prevMonthBtn = document.getElementById('prev-month');
+        const nextMonthBtn = document.getElementById('next-month');
+
+        // NEW: DOM Elements for Task Types
+        const newTaskTypeSelect = document.getElementById('new-task-type-select');
+        const newTaskProjectSelect = document.getElementById('new-task-project-select');
+        const newTaskEventTime = document.getElementById('new-task-event-time');
+        const newTaskTimeWrapper = document.getElementById('new-task-time-wrapper');
+
+        // NEW: DOM Elements for Task Time and Multi-day
+        const newTaskStartDate = document.getElementById('new-task-start-date');
+        const newTaskEndDate = document.getElementById('new-task-end-date');
+        const newTaskMultiDay = document.getElementById('new-task-multi-day');
+        const newTaskStartTime = document.getElementById('new-task-start-time');
+        const newTaskTimeSeparator = document.getElementById('new-task-time-separator');
+        const newTaskEndTime = document.getElementById('new-task-end-time');
+
+        let currentDate = new Date();
+        let selectedDate = new Date();
+        let selectedTimelineTrackIndex = null; // null = "All"
+        let clipboard = null;
+
+        /**
+         * Renders a simplified calendar preview for the greeting page.
+         */
+        function renderCalendarPreview() {
+            calendarGridPreview.innerHTML = '';
+            // Get the first day of the week to align the preview
+            const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).getDay();
+
+            // Add empty cells for the first week to align the days
+            for (let i = 0; i < firstDay; i++) {
+                const emptyCell = document.createElement('div');
+                emptyCell.classList.add('w-8', 'h-8');
+                calendarGridPreview.appendChild(emptyCell);
+            }
+
+            const days = 28; // Simple 4-week calendar preview
+            for (let i = 0; i < days; i++) {
+                const day = document.createElement('div');
+                day.classList.add('w-8', 'h-8', 'bg-purple-800', 'rounded-md');
+                calendarGridPreview.appendChild(day);
+            }
+        }
+
+        /**
+         * Renders the full calendar.
+         * @param {Date} date The date to render the calendar for.
+         */
+        function renderCalendar(date) {
+            calendarGrid.innerHTML = '';
+            const year = date.getFullYear();
+            const month = date.getMonth();
+
+            currentMonthYear.textContent = date.toLocaleString('default', { month: 'long', year: 'numeric' }).toUpperCase();
+
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const today = new Date();
+
+            for (let i = 0; i < firstDay; i++) {
+                const emptyCell = document.createElement('div');
+                emptyCell.classList.add('p-2', 'sm:p-4', 'text-sm', 'text-gray-300');
+                calendarGrid.appendChild(emptyCell);
+            }
+
+            for (let i = 1; i <= daysInMonth; i++) {
+                const day = document.createElement('div');
+                day.classList.add('calendar-day', 'p-2', 'sm:p-4', 'bg-purple-800', 'rounded-xl', 'text-center', 'relative');
+                day.textContent = i;
+                day.dataset.date = `${year}-${month + 1}-${i}`;
+
+                const currentDayFormatted = `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
+                const dayFormatted = day.dataset.date;
+
+                if (dayFormatted === currentDayFormatted) {
+                    day.classList.add('bg-cyan-400', 'text-white');
+                    day.textContent = 'TODAY';
+                }
+
+                if (tasks[dayFormatted] && tasks[dayFormatted].length > 0) {
+                    const dot = document.createElement('div');
+                    dot.classList.add('w-2', 'h-2', 'bg-yellow-400', 'rounded-full', 'absolute', 'bottom-2', 'right-2');
+                    day.appendChild(dot);
+                }
+
+                day.addEventListener('click', () => {
+                    const allDays = calendarGrid.querySelectorAll('.calendar-day');
+                    allDays.forEach(d => d.classList.remove('bg-purple-700'));
+                    day.classList.add('bg-purple-700');
+                    selectedDate = new Date(year, month, i);
+                    renderTasks(day.dataset.date);
+                    renderTimeBlocking(day.dataset.date); // NEW: Render time blocking for selected date
+                });
+
+                calendarGrid.appendChild(day);
+            }
+        }
+
+        /**
+* NEW: Renders the time blocking section for a specific date
+* @param {string} dateString The date in YYYY-MM-DD format
+*/
+        function renderTimeBlocking(dateString) {
+            const [y, m, d] = dateString.split('-').map(Number);
+            const displayDate = new Date(y, m - 1, d);
+            timeBlockingTitle.textContent = `DAILY SCHEDULE FOR ${displayDate.toLocaleDateString().toUpperCase()}`;
+            timeBlocksContainer.innerHTML = '';
+
+            // Show the time blocking section
+            timeBlockingSection.classList.remove('hidden');
+
+            // Generate time blocks from 8 AM to 10 PM
+            for (let hour = 8; hour <= 22; hour++) {
+                const timeBlock = document.createElement('div');
+                timeBlock.classList.add('time-block', 'flex');
+
+                const timeLabel = document.createElement('div');
+                timeLabel.classList.add('time-label');
+                timeLabel.textContent = `${hour % 12 === 0 ? 12 : hour % 12} ${hour < 12 ? 'AM' : 'PM'}`;
+
+                const timeBlockContent = document.createElement('div');
+                timeBlockContent.classList.add('time-block-content');
+
+                // Add alternating background for better readability
+                if (hour % 2 === 0) {
+                    timeBlockContent.classList.add('time-block-highlight');
+                }
+
+                timeBlock.appendChild(timeLabel);
+                timeBlock.appendChild(timeBlockContent);
+                timeBlocksContainer.appendChild(timeBlock);
+
+                // Check if there are any tasks or events scheduled for this hour
+                const dayTasks = tasks[dateString] || [];
+                dayTasks.forEach((task, index) => {
+                    let startHour, startMinutes, durationMinutes; // <-- ADD THIS LINE
+
+                    if (task.taskType === 'event' && (task.eventTime || task.startTime)) {                        // Event: Use the specified time
+                        [startHour, startMinutes] = (task.startTime || task.eventTime).split(':').map(Number);
+                        // NEW: Use saved duration, or default to 60 mins if no duration is set
+                        durationMinutes = (task.hours || 0) * 60 + (task.minutes || 0);
+                        if (durationMinutes === 0) {
+                            durationMinutes = 60; // Default to 1 hour if no duration specified
+                        }
+                    }
+                    else if (task.taskType === 'task' && (task.hours || task.minutes)) {
+                        // Task: Use specified start time or default to current hour
+                        if (task.startTime) {
+                            [startHour, startMinutes] = task.startTime.split(':').map(Number);
+                        } else {
+                            // Task has duration but no start time, don't render on grid
+                            return;
+                        }
+                        durationMinutes = (task.hours || 0) * 60 + (task.minutes || 0);
+
+                        // Only create task blocks if they start in this hour
+                        if (durationMinutes <= 0) return;
+                    } else {
+                        // Skip if not a scheduled item
+                        return;
+                    }
+
+                    // If this item falls in this hour block
+                    if (startHour === hour) {
+                        const scheduledItem = document.createElement('div');
+                        scheduledItem.classList.add('scheduled-task');
+
+                        // Create content with icon and text
+                        let icon = '';
+                        if (task.taskType === 'event') {
+                            icon = '🗓️ ';
+                        } else if (task.taskType === 'task') {
+                            icon = '✓ ';
+                        }
+
+                        let timeDisplayString = '';
+                        if (task.taskType === 'task' || task.taskType === 'event') {
+                            // Calculate end time
+                            const totalStartMinutes = startHour * 60 + startMinutes;
+                            const totalEndMinutes = totalStartMinutes + durationMinutes;
+                            const endHour = Math.floor(totalEndMinutes / 60);
+                            const endMinutes = totalEndMinutes % 60;
+
+                            // Format times using existing helper function
+                            const startTimeString = formatEventTime(`${String(startHour).padStart(2, '0')}:${String(startMinutes).padStart(2, '0')}`);
+
+                            // Handle end times that go past midnight (e.g., 24:15 -> 00:15)
+                            const formattedEndHour = String(endHour % 24).padStart(2, '0');
+                            const formattedEndMinutes = String(endMinutes).padStart(2, '0');
+                            const endTimeString = formatEventTime(`${formattedEndHour}:${formattedEndMinutes}`);
+
+                            if (durationMinutes > 0) {
+                                // Display range (e.g., "11:00 AM - 1:00 PM")
+                                timeDisplayString = `<span class="text-xs opacity-80 ml-2 whitespace-nowrap">${startTimeString} - ${endTimeString}</span>`;
+                            } else if (task.taskType === 'event') {
+                                // Event with no duration, just show start time
+                                timeDisplayString = `<span class="text-xs opacity-80 ml-2 whitespace-nowrap">${startTimeString}</span>`;
+                            }
+                        }
+
+                        scheduledItem.innerHTML = `
+                                <div class="flex items-center justify-between">
+                                    <span class="truncate">${icon}${task.text}</span>
+                                    ${timeDisplayString}
+                                </div>
+                            `;
+                        // Apply track/project color
+                        if (task.trackIndex !== null && task.projectIndex !== null &&
+                            tracks[task.trackIndex] && tracks[task.trackIndex].projects[task.projectIndex] &&
+                            tracks[task.trackIndex].projects[task.projectIndex].color) {
+                            scheduledItem.style.backgroundColor = tracks[task.trackIndex].projects[task.projectIndex].color;
+                        } else if (task.trackIndex !== null && tracks[task.trackIndex] && tracks[task.trackIndex].color) {
+                            scheduledItem.style.backgroundColor = tracks[task.trackIndex].color;
+                        } else {
+                            scheduledItem.style.backgroundColor = '#8b5cf6'; // Default purple
+                        }
+
+                        // Position the item in the time block based on minutes
+                        const topPosition = (startMinutes / 60) * 100;
+                        scheduledItem.style.top = `${topPosition}%`;
+
+                        // Set height based on duration (capped at remaining time in hour)
+                        // Set height based on the total duration
+                        const heightPercentage = (durationMinutes / 60) * 100;
+                        scheduledItem.style.height = `${heightPercentage}%`;
+                        // Add click event to highlight the task in the task list
+                        scheduledItem.addEventListener('click', () => {
+                            // Highlight the task in the task list
+                            const taskItems = taskList.querySelectorAll('li');
+                            taskItems.forEach(item => item.classList.remove('bg-purple-700'));
+                            if (taskItems[index]) {
+                                taskItems[index].classList.add('bg-purple-700');
+                                taskItems[index].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }
+                        });
+
+                        timeBlockContent.appendChild(scheduledItem);
+
+                    }
+                });
+            }
+        }
+
+        /**
+         * NEW: Formats event time from "HH:MM" to "H:MM AM/PM"
+         */
+        function formatEventTime(time) {
+            if (!time) return '';
+            let [hours, minutes] = time.split(':');
+            let ampm = 'AM';
+            hours = parseInt(hours);
+            if (hours >= 12) {
+                ampm = 'PM';
+                if (hours > 12) {
+                    hours -= 12;
+                }
+            }
+            if (hours === 0) {
+                hours = 12; // Midnight
+            }
+            return `${hours}:${minutes} ${ampm}`;
+        }
+
+        /**
+         * Renders the task list for the selected date.
+         * @param {string} dateString The date in YYYY-MM-DD format.
+         */
+        function renderTasks(dateString) {
+            const [y_task, m_task, d_task] = dateString.split('-').map(Number);
+            const displayDate_task = new Date(y_task, m_task - 1, d_task);
+            tasksTitle.textContent = `ACTIVITIES FOR ${displayDate_task.toLocaleDateString().toUpperCase()}`; taskList.innerHTML = '';
+
+            if (clipboard) {
+                const pasteBtnLi = document.createElement('li');
+                const pasteBtn = document.createElement('button');
+                pasteBtn.textContent = 'Paste Activity Here';
+                pasteBtn.classList.add('w-full', 'p-2', 'bg-green-600', 'text-white', 'rounded-lg', 'hover:bg-green-500', 'transition-colors', 'mb-3');
+                pasteBtn.addEventListener('click', async () => {
+                    if (!clipboard) return;
+
+                    const dateString = `${selectedDate.getFullYear()}-${selectedDate.getMonth() + 1}-${selectedDate.getDate()}`;
+                    if (!tasks[dateString]) {
+                        tasks[dateString] = [];
+                    }
+                    // Create a deep copy of the clipboard item
+                    tasks[dateString].push(JSON.parse(JSON.stringify(clipboard)));
+
+                    await saveData();
+                    renderTasks(dateString);
+                    renderCalendar(currentDate);
+                    renderTodayTasks();
+                    renderUpcomingTasks();
+                    renderTimeBlocking(dateString); // NEW: Update time blocking
+                });
+                pasteBtnLi.appendChild(pasteBtn);
+                taskList.appendChild(pasteBtnLi);
+            }
+
+            const dayTasks = tasks[dateString] || [];
+            if (dayTasks.length === 0) {
+                // Only show "no activities" if clipboard is also empty, otherwise paste button is the content
+                if (!clipboard) {
+                    const noTasks = document.createElement('li');
+                    noTasks.classList.add('text-gray-400', 'text-sm', 'italic');
+                    noTasks.textContent = 'No activities scheduled.';
+                    taskList.appendChild(noTasks);
+                }
+            } else {
+                dayTasks.forEach((task, index) => {
+                    const li = document.createElement('li');
+                    // UPDATED: Changed styling to be a "card"
+                    li.classList.add('text-lg', 'text-white', 'p-4', 'bg-purple-800', 'rounded-lg', 'mb-3');
+
+                    // NEW: Add drag-and-drop attributes
+                    li.dataset.index = index;
+                    li.setAttribute('draggable', true);
+
+                    // UPDATED: Apply track/project color
+                    // Check for project color first
+                    if (task.trackIndex !== null && task.projectIndex !== null && tracks[task.trackIndex] && tracks[task.trackIndex].projects[task.projectIndex] && tracks[task.trackIndex].projects[task.projectIndex].color) {
+                        li.style.backgroundColor = tracks[task.trackIndex].projects[task.projectIndex].color;
+                    }
+                    // Fallback to track color
+                    else if (task.trackIndex !== null && tracks[task.trackIndex] && tracks[task.trackIndex].color) {
+                        li.style.backgroundColor = tracks[task.trackIndex].color;
+                    }
+
+                    // NEW: Main task row to hold content and buttons
+                    // UPDATED: This is now the "Static View"
+                    const staticView = document.createElement('div');
+                    staticView.classList.add('flex', 'items-center', 'justify-between', 'w-full');
+
+                    const taskContent = document.createElement('div');
+                    taskContent.classList.add('flex', 'items-center', 'space-x-4');
+
+                    // NEW: Get task type. Default to 'task' for older data.
+                    const taskType = task.taskType || 'task';
+
+                    // --- NEW: Task Icon or Checkbox ---
+                    const iconContainer = document.createElement('div');
+                    iconContainer.classList.add('task-icon'); // Use fixed width
+
+                    if (taskType === 'event') {
+                        iconContainer.innerHTML = '🗓️';
+                    } else if (taskType === 'deadline') {
+                        iconContainer.innerHTML = '🚩';
+                        // Add checkbox for deadlines
+                        const checkbox = document.createElement('input');
+                        checkbox.type = 'checkbox';
+                        checkbox.checked = task.completed;
+                        checkbox.classList.add('w-5', 'h-5', 'rounded-lg', 'accent-purple-500');
+                        checkbox.addEventListener('change', () => {
+                            toggleTaskCompleted(dateString, index);
+                        });
+                        iconContainer.appendChild(checkbox);
+                    } else { // 'task'
+                        const checkbox = document.createElement('input');
+                        checkbox.type = 'checkbox';
+                        checkbox.checked = task.completed;
+                        checkbox.classList.add('w-5', 'h-5', 'rounded-lg', 'accent-purple-500');
+                        checkbox.addEventListener('change', () => {
+                            toggleTaskCompleted(dateString, index);
+                        });
+                        iconContainer.appendChild(checkbox);
+                    }
+                    // --- END NEW ---
+
+
+                    // NEW: Create a container for text + project
+                    const taskDetails = document.createElement('div');
+                    taskDetails.classList.add('flex', 'flex-col');
+
+                    const taskText = document.createElement('span');
+                    let timeString = '';
+                    if (taskType === 'task') {
+                        timeString = task.hours || task.minutes
+                            ? ` (${task.hours ? task.hours + 'h' : ''}${task.minutes ? (task.hours ? ' ' : '') + task.minutes + 'm' : ''})`
+                            : '';
+                    } else if (taskType === 'event') {
+                        timeString = task.eventTime ? ` (${formatEventTime(task.eventTime)})` : '';
+                    }
+                    // Deadlines have no time string
+                    // Deadlines have no time string
+
+                    taskText.textContent = task.text + timeString;
+                    taskText.classList.add('flex-1', 'cursor-pointer');
+
+                    if (task.completed) {
+                        taskText.classList.add('line-through', 'text-gray-400', 'italic');
+                    }
+                    taskDetails.appendChild(taskText);
+
+                    // NEW: Display Project Badge
+                    if (task.projectName) {
+                        const projectBadge = document.createElement('span');
+                        projectBadge.textContent = `[${task.trackName}] ${task.projectName}`;
+                        projectBadge.classList.add('text-xs', 'font-light', 'mt-1', 'text-gray-300', 'italic');
+                        taskDetails.appendChild(projectBadge);
+                    }
+
+                    // NEW: Add Sub-task Button (Only for 'task' type)
+                    const addSubtaskBtn = document.createElement('button');
+                    addSubtaskBtn.classList.add('p-2', 'text-green-300', 'hover:text-green-500', 'transition-colors', 'duration-200');
+                    addSubtaskBtn.innerHTML = `
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                        `;
+                    addSubtaskBtn.addEventListener('click', () => {
+                        showAddSubtaskInput(dateString, index);
+                    });
+
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.classList.add('p-2', 'text-red-300', 'hover:text-red-500', 'transition-colors', 'duration-200');
+                    deleteBtn.innerHTML = `
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                        `;
+                    deleteBtn.addEventListener('click', () => {
+                        deleteTask(dateString, index);
+                    });
+
+                    taskContent.appendChild(iconContainer); // UPDATED
+                    taskContent.appendChild(taskDetails); // UPDATED
+
+                    const buttonContainer = document.createElement('div');
+                    buttonContainer.classList.add('flex', 'items-center');
+
+                    const copyBtn = document.createElement('button');
+                    copyBtn.classList.add('p-2', 'text-blue-300', 'hover:text-blue-500', 'transition-colors', 'duration-200');
+                    copyBtn.innerHTML = `
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 4h8a2 2 0 012 2v8a2 2 0 01-2 2H8a2 2 0 01-2-2v-8a2 2 0 012-2z" />
+                                        </svg>
+                                    `;
+                    copyBtn.addEventListener('click', () => {
+                        // Create a deep copy of the task
+                        clipboard = JSON.parse(JSON.stringify(task));
+                        // Re-render to show the paste button
+                        renderTasks(dateString); // <-- FIX: Added this line
+                    }); // <-- FIX: Added this closing bracket
+
+                    // --- NEW: Edit Button for Main Task ---
+                    const editBtn = document.createElement('button');
+                    editBtn.classList.add('p-2', 'text-yellow-300', 'hover:text-yellow-500', 'transition-colors', 'duration-200');
+                    editBtn.innerHTML = `
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.536L16.732 3.732z" />
+                                            </svg>
+                                        `;
+                    // --- End Edit Button ---
+
+                    // NEW: Only show add subtask button for tasks
+                    if (taskType === 'task') {
+                        buttonContainer.appendChild(addSubtaskBtn);
+                    }
+                    buttonContainer.appendChild(copyBtn); // NEW: Add copy button
+                    buttonContainer.appendChild(editBtn); // NEW: Add edit button
+                    buttonContainer.appendChild(deleteBtn);
+
+
+                    // Add content and buttons to the main row
+                    // *** FIX: Replaced mainTaskRow with staticView ***
+                    staticView.appendChild(taskContent);
+                    staticView.appendChild(buttonContainer);
+
+                    // Add the main row to the list item
+                    // *** FIX: Replaced mainTaskRow with staticView ***
+                    li.appendChild(staticView); // This is now staticView
+
+                    // --- NEW: Edit View for Main Task ---
+                    const editView = document.createElement('div');
+                    editView.classList.add('hidden', 'space-y-2', 'mt-2');
+
+                    const editInput = document.createElement('input');
+                    editInput.type = 'text';
+                    editInput.value = task.text;
+                    editInput.classList.add('w-full', 'p-2', 'rounded-lg', 'border', 'border-gray-300', 'text-black', 'focus:outline-none', 'focus:ring-1', 'focus:ring-purple-500');
+
+                    // NEW: Wrapper for time inputs
+                    const timeInputsWrapper = document.createElement('div');
+
+                    const timeInputs = document.createElement('div');
+                    timeInputs.classList.add('flex', 'space-x-2');
+
+                    const editHours = document.createElement('input');
+                    editHours.type = 'number';
+                    editHours.value = task.hours || '';
+                    editHours.placeholder = 'hrs';
+                    editHours.classList.add('w-1/2', 'p-2', 'rounded-lg', 'border', 'border-gray-300', 'text-black', 'focus:outline-none', 'focus:ring-1', 'focus:ring-purple-500');
+
+                    const editMinutes = document.createElement('input');
+                    editMinutes.type = 'number';
+                    editMinutes.value = task.minutes || '';
+                    editMinutes.placeholder = 'min';
+                    editMinutes.classList.add('w-1/2', 'p-2', 'rounded-lg', 'border', 'border-gray-300', 'text-black', 'focus:outline-none', 'focus:ring-1', 'focus:ring-purple-500');
+
+                    timeInputs.appendChild(editHours);
+                    timeInputs.appendChild(editMinutes);
+
+                    // NEW: Edit Event Time
+                    const editEventTime = document.createElement('input');
+                    editEventTime.type = 'time';
+                    editEventTime.value = task.eventTime || '';
+                    editEventTime.classList.add('w-full', 'p-2', 'rounded-lg', 'border', 'border-gray-300', 'text-black', 'focus:outline-none', 'focus:ring-1', 'focus:ring-purple-500');
+
+                    // NEW: Logic to show correct time inputs
+                    if (taskType === 'task') {
+                        timeInputsWrapper.appendChild(timeInputs);
+                        editEventTime.classList.add('hidden');
+                    } else if (taskType === 'event') {
+                        timeInputsWrapper.appendChild(editEventTime);
+                        timeInputsWrapper.appendChild(timeInputs);
+                    }
+                    // No time inputs for deadline
+
+                    const buttonRow = document.createElement('div');
+                    buttonRow.classList.add('flex', 'space-x-2');
+
+                    const saveBtn = document.createElement('button');
+                    saveBtn.textContent = 'Save';
+                    saveBtn.classList.add('flex-1', 'p-2', 'bg-purple-900', 'text-white', 'rounded-lg', 'hover:bg-purple-800');
+
+                    const cancelBtn = document.createElement('button');
+                    cancelBtn.textContent = 'Cancel';
+                    cancelBtn.classList.add('flex-1', 'p-2', 'bg-gray-600', 'text-white', 'rounded-lg', 'hover:bg-gray-500');
+
+                    buttonRow.appendChild(saveBtn);
+                    buttonRow.appendChild(cancelBtn);
+
+                    editView.appendChild(editInput);
+                    // NEW: Append wrapper
+                    if (taskType !== 'deadline') {
+                        editView.appendChild(timeInputsWrapper);
+                    }
+                    editView.appendChild(buttonRow);
+                    li.appendChild(editView); // Add edit view to li
+
+                    // --- NEW: Event Listeners for Main Task Edit ---
+                    editBtn.addEventListener('click', () => {
+                        staticView.classList.add('hidden');
+                        editView.classList.remove('hidden');
+                    });
+
+                    cancelBtn.addEventListener('click', () => {
+                        staticView.classList.remove('hidden');
+                        editView.classList.add('hidden');
+                        // Reset values
+                        editInput.value = task.text;
+                        editHours.value = task.hours || '';
+                        editMinutes.value = task.minutes || '';
+                        editEventTime.value = task.eventTime || '';
+                    });
+
+                    saveBtn.addEventListener('click', async () => {
+                        const taskToUpdate = tasks[dateString][index];
+                        if (taskToUpdate) {
+                            taskToUpdate.text = editInput.value.trim();
+
+                            // NEW: Save correct time based on type
+                            if (taskType === 'task') {
+                                taskToUpdate.hours = parseInt(editHours.value) || null;
+                                taskToUpdate.minutes = parseInt(editMinutes.value) || null;
+                                // ...
+                            } else if (taskType === 'event') {
+                                taskToUpdate.eventTime = editEventTime.value || null;
+                                // ADD THESE TWO LINES:
+                                taskToUpdate.hours = parseInt(editHours.value) || null;
+                                taskToUpdate.minutes = parseInt(editMinutes.value) || null;
+                            }
+                            // ...
+
+                            await saveData();
+                            renderTasks(dateString); // Refresh this task list
+                            renderTimeBlocking(dateString); // NEW: Update time blocking
+
+                            // Refresh other views
+                            renderTodayTasks();
+                            renderUpcomingTasks();
+                        }
+                    });
+                    // --- End Main Task Edit ---
+
+                    // --- DRAG AND DROP (No changes, just context) ---
+                    li.addEventListener('dragstart', (e) => {
+                        e.stopPropagation();
+                        e.dataTransfer.setData('text/plain', index); // Store the index
+                        e.dataTransfer.effectAllowed = 'move';
+                        // Use setTimeout to allow browser to render drag image
+                        setTimeout(() => {
+                            li.classList.add('dragging');
+                        }, 0);
+                    });
+
+                    li.addEventListener('dragend', (e) => {
+                        e.stopPropagation();
+                        li.classList.remove('dragging');
+                        // Clean up all drag-over highlights
+                        taskList.querySelectorAll('li[draggable="true"]').forEach(item => item.classList.remove('drag-over'));
+                    });
+
+                    li.addEventListener('dragover', (e) => {
+                        e.preventDefault(); // Necessary to allow dropping
+                        e.stopPropagation();
+                        e.dataTransfer.dropEffect = 'move';
+                        li.classList.add('drag-over'); // Highlight this 'li' as a drop target
+                    });
+
+                    li.addEventListener('dragleave', (e) => {
+                        e.stopPropagation();
+                        li.classList.remove('drag-over');
+                    });
+
+                    li.addEventListener('drop', async (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+
+                        const draggedIndex = parseInt(e.dataTransfer.getData('text/plain'));
+                        const dropIndex = index; // 'index' from the loop scope
+
+                        li.classList.remove('drag-over');
+
+                        if (draggedIndex === dropIndex) return; // No change
+
+                        const dateString = `${selectedDate.getFullYear()}-${selectedDate.getMonth() + 1}-${selectedDate.getDate()}`;
+                        const dayTasks = tasks[dateString];
+
+                        if (dayTasks) {
+                            // Remove the dragged task
+                            const [draggedTask] = dayTasks.splice(draggedIndex, 1);
+                            // Insert it at the new position
+                            dayTasks.splice(dropIndex, 0, draggedTask);
+
+                            await saveData();
+                            renderTasks(dateString); // Re-render to update indices
+                        }
+                    });
+                    // --- END DRAG AND DROP ---
+
+
+                    // Sub-task list (unchanged, will now appear below main row)
+                    // NEW: Only render subtasks for 'task' type
+                    if (taskType === 'task' && task.subtasks && task.subtasks.length > 0) {
+                        const subtaskList = document.createElement('div'); // Was 'ul'
+                        subtaskList.classList.add('ml-12', 'mt-2', 'space-y-2');
+                        task.subtasks.forEach((subtask, subIndex) => {
+                            const subLi = document.createElement('div'); // Was 'li'
+                            // UPDATED: Removed justify-between
+                            subLi.classList.add('text-md', 'text-gray-200', 'flex', 'flex-col');
+
+                            // --- UPDATED: This is now the "Static View" for Subtasks ---
+                            const subStaticView = document.createElement('div');
+                            subStaticView.classList.add('flex', 'items-center', 'justify-between');
+
+                            const subTaskContent = document.createElement('div');
+                            subTaskContent.classList.add('flex', 'items-center', 'space-x-3');
+
+                            const subCheckbox = document.createElement('input');
+                            subCheckbox.type = 'checkbox';
+                            subCheckbox.checked = subtask.completed;
+                            subCheckbox.classList.add('w-4', 'h-4', 'rounded', 'accent-purple-500');
+                            subCheckbox.addEventListener('change', () => {
+                                toggleSubtaskCompleted(dateString, index, subIndex);
+                            });
+
+                            const subTaskText = document.createElement('span');
+                            // NEW: Add time string for subtasks
+                            const timeString = subtask.hours || subtask.minutes
+                                ? ` (${subtask.hours ? subtask.hours + 'h' : ''}${subtask.minutes ? (subtask.hours ? ' ' : '') + subtask.minutes + 'm' : ''})`
+                                : '';
+                            subTaskText.textContent = subtask.text + timeString;
+
+                            if (subtask.completed) {
+                                subTaskText.classList.add('line-through', 'text-gray-400', 'italic');
+                            }
+
+                            // --- UPDATED: Button container for subtasks ---
+                            const subButtonContainer = document.createElement('div');
+                            subButtonContainer.classList.add('flex', 'items-center');
+
+                            // --- NEW: Edit Button for Subtask ---
+                            const subEditBtn = document.createElement('button');
+                            subEditBtn.classList.add('p-1', 'text-yellow-300', 'hover:text-yellow-500', 'transition-colors', 'duration-200');
+                            subEditBtn.innerHTML = `
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.536L16.732 3.732z" />
+                                                    </svg>
+                                                `;
+                            // --- End Edit Button ---
+
+                            const deleteSubtaskBtn = document.createElement('button');
+                            deleteSubtaskBtn.classList.add('p-1', 'text-red-300', 'hover:text-red-500', 'transition-colors', 'duration-200');
+                            deleteSubtaskBtn.innerHTML = `
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                                    </svg>
+                                                `;
+                            deleteSubtaskBtn.addEventListener('click', () => {
+                                deleteSubtask(dateString, index, subIndex);
+                            });
+
+                            subTaskContent.appendChild(subCheckbox);
+                            subTaskContent.appendChild(subTaskText);
+
+                            subButtonContainer.appendChild(subEditBtn); // NEW
+                            subButtonContainer.appendChild(deleteSubtaskBtn);
+
+                            subStaticView.appendChild(subTaskContent);
+                            subStaticView.appendChild(subButtonContainer); // UPDATED
+
+                            subLi.appendChild(subStaticView); // Add static view
+
+                            // --- NEW: Edit View for Subtask ---
+                            const subEditView = document.createElement('div');
+                            subEditView.classList.add('hidden', 'space-y-2', 'mt-2', 'pl-7'); // Indented
+
+                            const subEditInput = document.createElement('input');
+                            subEditInput.type = 'text';
+                            subEditInput.value = subtask.text;
+                            subEditInput.classList.add('w-full', 'p-2', 'rounded-lg', 'border', 'border-gray-300', 'text-black', 'focus:outline-none', 'focus:ring-1', 'focus:ring-purple-500');
+
+                            const subTimeInputs = document.createElement('div');
+                            subTimeInputs.classList.add('flex', 'space-x-2');
+
+                            const subEditHours = document.createElement('input');
+                            subEditHours.type = 'number';
+                            subEditHours.value = subtask.hours || '';
+                            subEditHours.placeholder = 'hrs';
+                            subEditHours.classList.add('w-1/2', 'p-2', 'rounded-lg', 'border', 'border-gray-300', 'text-black', 'focus:outline-none', 'focus:ring-1', 'focus:ring-purple-500');
+
+                            const subEditMinutes = document.createElement('input');
+                            subEditMinutes.type = 'number';
+                            subEditMinutes.value = subtask.minutes || '';
+                            subEditMinutes.placeholder = 'min';
+                            subEditMinutes.classList.add('w-1/2', 'p-2', 'rounded-lg', 'border', 'border-gray-300', 'text-black', 'focus:outline-none', 'focus:ring-1', 'focus:ring-purple-500');
+
+                            subTimeInputs.appendChild(subEditHours);
+                            subTimeInputs.appendChild(subEditMinutes);
+
+                            const subButtonRow = document.createElement('div');
+                            subButtonRow.classList.add('flex', 'space-x-2');
+
+                            const subSaveBtn = document.createElement('button');
+                            subSaveBtn.textContent = 'Save';
+                            subSaveBtn.classList.add('flex-1', 'p-2', 'bg-purple-900', 'text-white', 'rounded-lg', 'hover:bg-purple-800');
+
+                            const subCancelBtn = document.createElement('button');
+                            subCancelBtn.textContent = 'Cancel';
+                            subCancelBtn.classList.add('flex-1', 'p-2', 'bg-gray-600', 'text-white', 'rounded-lg', 'hover:bg-gray-500');
+
+                            subButtonRow.appendChild(subSaveBtn);
+                            subButtonRow.appendChild(subCancelBtn);
+
+                            subEditView.appendChild(subEditInput);
+                            subEditView.appendChild(subTimeInputs);
+                            subEditView.appendChild(subButtonRow);
+                            subLi.appendChild(subEditView); // Add edit view to subLi
+
+                            // --- NEW: Event Listeners for Subtask Edit ---
+                            subEditBtn.addEventListener('click', () => {
+                                subStaticView.classList.add('hidden');
+                                subEditView.classList.remove('hidden');
+                            });
+
+                            subCancelBtn.addEventListener('click', () => {
+                                subStaticView.classList.remove('hidden');
+                                subEditView.classList.add('hidden');
+                                // Reset values
+                                subEditInput.value = subtask.text;
+                                subEditHours.value = subtask.hours || '';
+                                subEditMinutes.value = subtask.minutes || '';
+                            });
+
+                            subSaveBtn.addEventListener('click', async () => {
+                                const subtaskToUpdate = tasks[dateString][index].subtasks[subIndex];
+                                if (subtaskToUpdate) {
+                                    subtaskToUpdate.text = subEditInput.value.trim();
+                                    subtaskToUpdate.hours = parseInt(subEditHours.value) || null;
+                                    subtaskToUpdate.minutes = parseInt(subEditMinutes.value) || null;
+
+                                    await saveData();
+                                    renderTasks(dateString); // Refresh this task list
+
+                                    // Refresh other views
+                                    renderTodayTasks();
+                                    renderUpcomingTasks();
+                                }
+                            });
+                            // --- End Subtask Edit ---
+
+                            subtaskList.appendChild(subLi);
+                        });
+                        li.appendChild(subtaskList); // Append sub-list to main li
+                    }
+
+                    // Add sub-task input container (unchanged, will now appear below)
+                    // NEW: Only show for 'task' type
+                    if (taskType === 'task') {
+                        const addSubtaskContainer = document.createElement('div');
+                        addSubtaskContainer.id = `subtask-input-${dateString}-${index}`;
+                        addSubtaskContainer.classList.add('ml-12', 'mt-2', 'flex', 'space-x-2', 'hidden');
+
+                        const subtaskInput = document.createElement('input');
+                        subtaskInput.type = 'text';
+                        subtaskInput.classList.add('flex-1', 'p-2', 'rounded-lg', 'border', 'border-gray-300', 'text-black', 'focus:outline-none', 'focus:ring-1', 'focus:ring-purple-500');
+                        subtaskInput.placeholder = 'New sub-task...';
+
+                        // NEW: Add time inputs for subtasks
+                        const subtaskHoursInput = document.createElement('input');
+                        subtaskHoursInput.type = 'number';
+                        subtaskHoursInput.classList.add('w-16', 'p-2', 'rounded-lg', 'border', 'border-gray-300', 'text-black', 'focus:outline-none', 'focus:ring-1', 'focus:ring-purple-500');
+                        subtaskHoursInput.placeholder = 'hrs';
+
+                        const subtaskMinutesInput = document.createElement('input');
+                        subtaskMinutesInput.type = 'number';
+                        subtaskMinutesInput.classList.add('w-16', 'p-2', 'rounded-lg', 'border', 'border-gray-300', 'text-black', 'focus:outline-none', 'focus:ring-1', 'focus:ring-purple-500');
+                        subtaskMinutesInput.placeholder = 'min';
+
+                        const saveSubtaskBtn = document.createElement('button');
+                        saveSubtaskBtn.classList.add('p-2', 'bg-purple-900', 'text-white', 'rounded-lg', 'hover:bg-purple-800');
+                        saveSubtaskBtn.textContent = 'Save';
+                        saveSubtaskBtn.addEventListener('click', () => {
+                            // Pass all inputs to the save function
+                            saveSubtask(dateString, index, subtaskInput, subtaskHoursInput, subtaskMinutesInput);
+                        });
+
+                        addSubtaskContainer.appendChild(subtaskInput);
+                        // NEW: Append time inputs
+                        addSubtaskContainer.appendChild(subtaskHoursInput);
+                        addSubtaskContainer.appendChild(subtaskMinutesInput);
+                        addSubtaskContainer.appendChild(saveSubtaskBtn);
+                        li.appendChild(addSubtaskContainer); // Append container to main li
+                    }
+
+                    taskList.appendChild(li);
+                });
+            }
+        }
+
+        /**
+         * Renders a simplified task list for a given date on the greeting page.
+         * Now shows a fixed number of slots.
+         */
+        function renderTodayTasks() {
+            todayTasksList.innerHTML = '';
+            const todayDateString = `${new Date().getFullYear()}-${new Date().getMonth() + 1}-${new Date().getDate()}`;
+            const dayTasks = tasks[todayDateString] || [];
+            const maxSlots = 4;
+
+            for (let i = 0; i < maxSlots; i++) {
+                const li = document.createElement('li');
+                li.classList.add('today-task-item', 'space-y-3', 'mb-6');
+
+                if (dayTasks[i]) {
+                    // Task exists, render with a checkbox and text
+                    const task = dayTasks[i];
+                    const taskType = task.taskType || 'task'; // Default to 'task'
+
+                    // UPDATED: Apply track/project color
+                    // Check for project color first
+                    if (task.trackIndex !== null && task.projectIndex !== null && tracks[task.trackIndex] && tracks[task.trackIndex].projects[task.projectIndex] && tracks[task.trackIndex].projects[task.projectIndex].color) {
+                        li.style.backgroundColor = tracks[task.trackIndex].projects[task.projectIndex].color;
+                        li.classList.add('has-track-color');
+                    }
+                    // Fallback to track color
+                    else if (task.trackIndex !== null && tracks[task.trackIndex] && tracks[task.trackIndex].color) {
+                        li.style.backgroundColor = tracks[task.trackIndex].color;
+                        li.classList.add('has-track-color');
+                    }
+
+                    // The text and checkbox are wrapped in a div to maintain alignment
+                    const taskContent = document.createElement('div');
+                    taskContent.classList.add('flex', 'items-center', 'space-x-4', 'flex-1');
+
+                    // --- NEW: Icon/Checkbox for Today's Tasks ---
+                    const iconContainer = document.createElement('div');
+                    iconContainer.classList.add('task-icon');
+
+                    if (taskType === 'event') {
+                        iconContainer.innerHTML = '🗓️';
+                    } else if (taskType === 'deadline') {
+                        iconContainer.innerHTML = '🚩';
+                        const checkbox = document.createElement('input');
+                        checkbox.type = 'checkbox';
+                        checkbox.checked = task.completed;
+                        checkbox.classList.add('w-5', 'h-5', 'rounded-lg', 'accent-purple-500');
+                        checkbox.addEventListener('change', () => {
+                            toggleTaskCompleted(todayDateString, i);
+                        });
+                        iconContainer.appendChild(checkbox);
+                    } else { // 'task'
+                        const checkbox = document.createElement('input');
+                        checkbox.type = 'checkbox';
+                        checkbox.checked = task.completed;
+                        checkbox.classList.add('w-5', 'h-5', 'rounded-lg', 'accent-purple-500');
+                        checkbox.addEventListener('change', () => {
+                            toggleTaskCompleted(todayDateString, i);
+                        });
+                        iconContainer.appendChild(checkbox);
+                    }
+                    // --- END NEW ---
+
+                    // NEW: Container for text + project
+                    const taskDetails = document.createElement('div');
+                    taskDetails.classList.add('flex', 'flex-col', 'flex-1');
+
+                    const taskText = document.createElement('span');
+
+                    // NEW: Time string logic for all types
+                    let timeString = '';
+                    if (taskType === 'task') {
+                        timeString = task.hours || task.minutes
+                            ? ` (${task.hours ? task.hours + 'h' : ''}${task.minutes ? (task.hours ? ' ' : '') + task.minutes + 'm' : ''})`
+                            : '';
+                    } else if (taskType === 'event') {
+                        timeString = task.eventTime ? ` (${formatEventTime(task.eventTime)})` : '';
+                    }
+                    // No time for deadline
+
+                    taskText.textContent = task.text + timeString;
+                    taskText.classList.add('text-black', 'flex-1');
+
+                    if (task.completed) {
+                        taskText.classList.add('line-through', 'text-gray-400', 'italic');
+                    }
+                    taskDetails.appendChild(taskText);
+
+                    // NEW: Display Project Badge
+                    if (task.projectName) {
+                        const projectBadge = document.createElement('span');
+                        projectBadge.textContent = `[${task.trackName}] ${task.projectName}`;
+                        projectBadge.classList.add('text-xs', 'font-semibold', 'mt-1', 'text-gray-800'); // Dark text on light bg
+                        taskDetails.appendChild(projectBadge);
+                    }
+
+                    taskContent.appendChild(iconContainer); // UPDATED
+                    taskContent.appendChild(taskDetails); // UPDATED
+                    li.appendChild(taskContent);
+
+                    // NEW: Render sub-tasks for today (changed from <ul> to <div>)
+                    // NEW: Only for 'task' type
+                    if (taskType === 'task' && task.subtasks && task.subtasks.length > 0) {
+                        const subtaskList = document.createElement('div'); // Was 'ul'
+                        subtaskList.classList.add('ml-12', 'mt-2', 'space-y-1');
+                        task.subtasks.forEach((subtask, subIndex) => {
+                            const subLi = document.createElement('div'); // Was 'li'
+                            subLi.classList.add('flex', 'items-center', 'space-x-3');
+
+                            const subCheckbox = document.createElement('input');
+                            subCheckbox.type = 'checkbox';
+                            subCheckbox.checked = subtask.completed;
+                            subCheckbox.classList.add('w-4', 'h-4', 'rounded', 'accent-purple-500');
+                            subCheckbox.addEventListener('change', () => {
+                                toggleSubtaskCompleted(todayDateString, i, subIndex);
+                            });
+
+                            const subTaskText = document.createElement('span');
+                            // NEW: Add time string for subtasks
+                            const timeString = subtask.hours || subtask.minutes
+                                ? ` (${subtask.hours ? subtask.hours + 'h' : ''}${subtask.minutes ? (subtask.hours ? ' ' : '') + subtask.minutes + 'm' : ''})`
+                                : '';
+                            subTaskText.textContent = subtask.text + timeString;
+
+                            subTaskText.classList.add('text-black', 'text-sm');
+                            if (subtask.completed) {
+                                subTaskText.classList.add('line-through', 'text-gray-600', 'italic');
+                            }
+
+                            subLi.appendChild(subCheckbox);
+                            subLi.appendChild(subTaskText);
+                            subtaskList.appendChild(subLi);
+                        });
+                        li.appendChild(subtaskList);
+                    }
+                } else {
+                    // No task, render a grayed-out panel
+                    li.classList.add('empty');
+                    li.innerHTML = `
+                                            <div class="h-6 w-full bg-gray-400 rounded-md"></div>
+                                        `;
+                }
+
+                todayTasksList.appendChild(li);
+            }
+        }
+
+        /**
+         * NEW: Renders filter buttons for the main timeline.
+         */
+        function renderTimelineFilters() {
+            const filterContainer = document.getElementById('timeline-filter-buttons');
+            if (!filterContainer) return;
+            filterContainer.innerHTML = '';
+
+            // "All" button
+            const allBtn = document.createElement('button');
+            allBtn.textContent = 'All';
+            allBtn.classList.add('px-3', 'py-1', 'rounded-full', 'text-sm', 'transition-colors');
+            if (selectedTimelineTrackIndex === null) {
+                allBtn.classList.add('bg-yellow-400', 'text-black', 'font-semibold');
+            } else {
+                allBtn.classList.add('bg-purple-800', 'text-gray-300', 'hover:bg-purple-700');
+            }
+            allBtn.addEventListener('click', () => {
+                selectedTimelineTrackIndex = null;
+                renderTimelineFilters();
+                renderUpcomingTasks();
+            });
+            filterContainer.appendChild(allBtn);
+
+            // Track buttons
+            tracks.forEach((track, index) => {
+                const trackBtn = document.createElement('button');
+                trackBtn.textContent = track.name;
+                trackBtn.classList.add('px-3', 'py-1', 'rounded-full', 'text-sm', 'transition-colors');
+                trackBtn.style.color = 'white'; // Default text
+
+                if (selectedTimelineTrackIndex === index) {
+                    trackBtn.style.backgroundColor = track.color || '#6b21a8';
+                    trackBtn.classList.add('font-semibold');
+                } else {
+                    // Create an inactive color by adding alpha
+                    const inactiveColor = (track.color || '#6b21a8') + 'B3'; // 70% opacity
+                    trackBtn.style.backgroundColor = inactiveColor;
+                    trackBtn.classList.add('opacity-80', 'hover:opacity-100');
+                }
+
+                trackBtn.addEventListener('click', () => {
+                    selectedTimelineTrackIndex = index;
+                    renderTimelineFilters();
+                    renderUpcomingTasks();
+                });
+                filterContainer.appendChild(trackBtn);
+            });
+        }
+
+        /**
+         * Renders the upcoming tasks timeline at the bottom of the greeting page.
+         */
+        function renderUpcomingTasks() {
+            upcomingTasksTimeline.innerHTML = '';
+            const today = new Date();
+
+            const upcomingDates = [];
+            const daysToShow = 14; // Show up to 2 weeks in advance
+
+            for (let i = 0; i < daysToShow; i++) {
+                const date = new Date(today);
+                date.setDate(today.getDate() + i);
+                upcomingDates.push(date);
+            }
+
+            upcomingDates.forEach(date => {
+                const dateString = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+
+                const card = document.createElement('div');
+                card.classList.add('timeline-item', 'flex-none', 'p-4', 'rounded-xl', 'text-center', 'relative');
+
+                if (dateString === `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`) {
+                    card.classList.add('bg-sky-300', 'text-black');
+                } else {
+                    card.classList.add('bg-purple-700', 'text-white');
+                }
+
+                const monthAbbr = date.toLocaleString('en-US', { month: 'short' }).toUpperCase();
+                const dayNum = date.getDate();
+
+                card.innerHTML = `
+                                        <p class="font-semibold text-sm">${monthAbbr}.</p>
+                                        <p class="font-bold text-xl">${dayNum}${dayNum === 1 || dayNum === 21 || dayNum === 31 ? 'ST' : dayNum === 2 || dayNum === 22 ? 'ND' : dayNum === 3 || dayNum === 23 ? 'RD' : 'TH'}</p>
+                                    `;
+
+                // Render the tasks directly in the panel
+                // UPDATED: Filter tasks based on selectedTimelineTrackIndex
+                const dayTasks = (tasks[dateString] || []).filter(task =>
+                    selectedTimelineTrackIndex === null || task.trackIndex === selectedTimelineTrackIndex
+                );
+
+                if (dayTasks.length > 0) {
+                    const taskList = document.createElement('div');
+                    taskList.classList.add('mt-2', 'space-y-1');
+                    dayTasks.forEach(task => {
+                        const taskType = task.taskType || 'task'; // Default
+
+                        const taskText = document.createElement('p');
+                        taskText.classList.add('text-xs', 'text-white', 'break-words');
+                        if (task.completed) {
+                            taskText.classList.add('line-through', 'text-gray-400');
+                        }
+
+                        // NEW: Time string logic for all types
+                        let timeString = '';
+                        let icon = '';
+                        if (taskType === 'task') {
+                            timeString = task.hours || task.minutes
+                                ? ` (${task.hours ? task.hours + 'h' : ''}${task.minutes ? (task.hours ? ' ' : '') + task.minutes + 'm' : ''})`
+                                : '';
+                        } else if (taskType === 'event') {
+                            timeString = task.eventTime ? ` (${formatEventTime(task.eventTime)})` : '';
+                            icon = '🗓️ ';
+                        } else if (taskType === 'deadline') {
+                            icon = '🚩 ';
+                        }
+
+                        taskText.textContent = icon + task.text + timeString;
+                        taskList.appendChild(taskText);
+
+                        // NEW: Display Project Badge
+                        if (task.projectName) {
+                            const projectBadge = document.createElement('p');
+                            projectBadge.textContent = `[${task.projectName}]`;
+                            // UPDATED: Added padding, rounding, and inline-block
+                            projectBadge.classList.add('text-xs', 'font-semibold', 'opacity-80', 'ml-1', 'px-1', 'rounded-sm', 'inline-block');
+
+                            // UPDATED: Apply track/project color
+                            // Check for project color first
+                            if (task.trackIndex !== null && task.projectIndex !== null && tracks[task.trackIndex] && tracks[task.trackIndex].projects[task.projectIndex] && tracks[task.trackIndex].projects[task.projectIndex].color) {
+                                projectBadge.style.backgroundColor = tracks[task.trackIndex].projects[task.projectIndex].color;
+                                projectBadge.classList.add('text-white');
+                            }
+                            // Fallback to track color
+                            else if (task.trackIndex !== null && tracks[task.trackIndex] && tracks[task.trackIndex].color) {
+                                projectBadge.style.backgroundColor = tracks[task.trackIndex].color;
+                                projectBadge.classList.add('text-white'); // Assume dark color, so white text
+                            } else {
+                                projectBadge.classList.add('text-white'); // Default
+                            }
+
+                            taskList.appendChild(projectBadge);
+                        }
+
+                        // NEW: Render sub-tasks for timeline (Tasks only)
+                        if (taskType === 'task' && task.subtasks && task.subtasks.length > 0) {
+                            task.subtasks.forEach(subtask => {
+                                const subtaskTextEl = document.createElement('p');
+                                subtaskTextEl.classList.add('text-xs', 'text-gray-200', 'ml-2');
+                                if (subtask.completed) {
+                                    subtaskTextEl.classList.add('line-through', 'text-gray-400');
+                                }
+
+                                // NEW: Add time string for subtasks
+                                const timeString = subtask.hours || subtask.minutes
+                                    ? ` (${subtask.hours ? subtask.hours + 'h' : ''}${subtask.minutes ? (subtask.hours ? ' ' : '') + subtask.minutes + 'm' : ''})`
+                                    : '';
+                                subtaskTextEl.textContent = `- ${subtask.text}` + timeString;
+
+                                taskList.appendChild(subtaskTextEl);
+                            });
+                        }
+                    });
+                    card.appendChild(taskList);
+                }
+
+                upcomingTasksTimeline.appendChild(card);
+            });
+        }
+
+        /**
+* Adds a new task to the selected date.
+*/
+        async function addTask() {
+            // NEW: Get task type
+            const taskType = newTaskTypeSelect.value;
+            const taskText = newTaskInput.value.trim();
+            if (taskText === '') return;
+
+            // NEW: Get project value
+            const projectValue = newTaskProjectSelect.value;
+
+            // NEW: Parse project value
+            let trackIndex = null, projectIndex = null, trackName = null, projectName = null;
+            if (projectValue) {
+                const [ti, pi] = projectValue.split('-').map(Number);
+                if (tracks[ti] && tracks[ti].projects[pi]) {
+                    trackIndex = ti;
+                    projectIndex = pi;
+                    trackName = tracks[ti].name;
+                    projectName = tracks[ti].projects[pi].name;
+                }
+            }
+
+            // NEW: Get dates
+            const startDate = newTaskStartDate.value || `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`;
+            const isMultiDay = newTaskMultiDay.checked;
+            const endDate = isMultiDay ? newTaskEndDate.value : startDate;
+
+            // NEW: Validate dates
+            if (isMultiDay && (!startDate || !endDate)) {
+                alert('Please select both start and end dates for multi-day tasks.');
+                return;
+            }
+
+            // NEW: Create task object based on type
+            const newTask = {
+                text: taskText,
+                taskType: taskType,
+                completed: false,
+                trackIndex: trackIndex,
+                projectIndex: projectIndex,
+                trackName: trackName,
+                projectName: projectName,
+                startDate: startDate,
+                isMultiDay: isMultiDay,
+                endDate: endDate
+            };
+
+            if (taskType === 'task') {
+                newTask.hours = parseInt(taskHoursInput.value) || null;
+                newTask.minutes = parseInt(taskMinutesInput.value) || null;
+
+                // NEW: Calculate duration if end time is provided
+                const startTimeStr = newTask.startTime || newTask.eventTime;
+                const endTimeStr = newTaskEndTime.value; // Use the variable from Step 2
+
+                if (startTimeStr && endTimeStr) {
+                    const start = new Date(`1970-01-01T${startTimeStr}:00`);
+                    const end = new Date(`1970-01-01T${endTimeStr}:00`);
+
+                    let diffMs = end - start;
+                    if (diffMs < 0) {
+                        // This assumes the end time is on the next day if it's earlier,
+                        // which can happen for multi-day tasks.
+                        // For single-day, it's better to treat as 0 or error, but this is safer.
+                        diffMs = 0; // Or alert("End time must be after start time");
+                    }
+
+                    const diffMinutes = Math.floor(diffMs / 60000);
+
+                    newTask.hours = Math.floor(diffMinutes / 60);
+                    newTask.minutes = diffMinutes % 60;
+                }
+
+                // NEW: Handle multi-day tasks by creating entries for each date
+                newTask.startTime = newTaskStartTime.value || null;
+                newTask.subtasks = [];
+            } else if (taskType === 'event') {
+                newTask.eventTime = newTaskEventTime.value || null;
+                newTask.startTime = newTaskStartTime.value || null;
+                // NEW: Add duration for events
+                newTask.hours = parseInt(taskHoursInput.value) || null;
+                newTask.minutes = parseInt(taskMinutesInput.value) || null;
+            }
+            // Deadline has no extra properties
+
+            // NEW: Handle multi-day tasks by creating entries for each date
+            if (isMultiDay) {
+                const start = new Date(startDate + 'T12:00:00Z');
+                const end = new Date(endDate + 'T12:00:00Z');
+                // Create tasks for each day in the range
+                for (let date = new Date(start); date <= end; date.setDate(date.getDate() + 1)) {
+                    const dateString = `${date.getUTCFullYear()}-${date.getUTCMonth() + 1}-${date.getUTCDate()}`;
+                    if (!tasks[dateString]) {
+                        tasks[dateString] = [];
+                    }
+
+                    // Create a copy of the task for this specific date
+                    const taskForDate = JSON.parse(JSON.stringify(newTask));
+                    taskForDate.isPartOfMultiDay = true;
+                    taskForDate.multiDayIndex = tasks[dateString].length;
+
+                    tasks[dateString].push(taskForDate);
+                }
+            } else {
+                // Single day task
+                const dateString = startDate;
+                if (!tasks[dateString]) {
+                    tasks[dateString] = [];
+                }
+                tasks[dateString].push(newTask);
+            }
+
+            // Reset inputs
+            newTaskInput.value = '';
+            taskHoursInput.value = '';
+            taskMinutesInput.value = '';
+            newTaskEventTime.value = '';
+            newTaskStartTime.value = '';
+            newTaskEndTime.value = '';
+            newTaskStartDate.value = '';
+            newTaskEndDate.value = '';
+            newTaskMultiDay.checked = false;
+            newTaskProjectSelect.value = ''; // Reset select
+            updateMultiDayVisibility(); // Hide end date
+
+            // Refresh views
+            renderTasks(`${selectedDate.getFullYear()}-${selectedDate.getMonth() + 1}-${selectedDate.getDate()}`);
+            renderCalendar(currentDate);
+            renderTodayTasks();
+            renderUpcomingTasks();
+            renderTimeBlocking(`${selectedDate.getFullYear()}-${selectedDate.getMonth() + 1}-${selectedDate.getDate()}`);
+            await saveData();
+        }
+
+        /**
+         * Toggles the completion status of a task.
+         * @param {string} dateString The date of the task.
+         * @param {number} index The index of the task.
+         */
+        async function toggleTaskCompleted(dateString, index) {
+            if (tasks[dateString] && tasks[dateString][index]) {
+                const task = tasks[dateString][index];
+                // Only toggle if it's not an event
+                if (task.taskType !== 'event') {
+                    task.completed = !task.completed;
+
+                    // NEW: Cascade completion status to sub-tasks (if they exist)
+                    if (task.subtasks) {
+                        task.subtasks.forEach(subtask => subtask.completed = task.completed);
+                    }
+                    renderTasks(dateString);
+                    renderTodayTasks();
+                    renderUpcomingTasks();
+                    await saveData();
+                }
+            }
+        }
+
+        // NEW: Toggle sub-task completion
+        async function toggleSubtaskCompleted(dateString, taskIndex, subtaskIndex) {
+            if (tasks[dateString] && tasks[dateString][taskIndex] && tasks[dateString][taskIndex].subtasks[subtaskIndex]) {
+                const task = tasks[dateString][taskIndex];
+                const subtask = tasks[dateString][taskIndex].subtasks[subtaskIndex];
+                subtask.completed = !subtask.completed;
+
+                // NEW: Check if all sub-tasks are complete to update the main task
+                const allSubtasksComplete = task.subtasks.every(st => st.completed);
+                task.completed = allSubtasksComplete;
+
+                renderTasks(dateString);
+                renderTodayTasks();
+                renderUpcomingTasks();
+                // NEW: Refresh projects view if it's active
+                if (tracksPage.classList.contains('active') && selectedTrackIndex !== null) {
+                    renderProjects();
+                }
+                await saveData();
+            }
+        }
+
+        // NEW: Show the input field for adding a new sub-task
+        function showAddSubtaskInput(dateString, index) {
+            const container = document.getElementById(`subtask-input-${dateString}-${index}`);
+            if (container) {
+                container.classList.toggle('hidden');
+            }
+        }
+
+        // NEW: Save a new sub-task
+        async function saveSubtask(dateString, index, textInput, hoursInput, minutesInput) {
+            const subtaskText = textInput.value.trim();
+            if (subtaskText === '') {
+                return;
+            }
+
+            // NEW: Get time values
+            const subtaskHours = parseInt(hoursInput.value) || null;
+            const subtaskMinutes = parseInt(minutesInput.value) || null;
+
+            if (tasks[dateString] && tasks[dateString][index]) {
+                if (!tasks[dateString][index].subtasks) {
+                    tasks[dateString][index].subtasks = [];
+                }
+                // NEW: Push object with time
+                tasks[dateString][index].subtasks.push({
+                    text: subtaskText,
+                    hours: subtaskHours,
+                    minutes: subtaskMinutes,
+                    completed: false
+                });
+
+                // NEW: Clear all inputs
+                textInput.value = '';
+                hoursInput.value = '';
+                minutesInput.value = '';
+
+                showAddSubtaskInput(dateString, index); // Hide the input
+                renderTasks(dateString);
+                renderTodayTasks();
+                renderUpcomingTasks();
+                await saveData();
+            }
+        }
+
+        // NEW: Delete a sub-task
+        async function deleteSubtask(dateString, taskIndex, subtaskIndex) {
+            if (tasks[dateString] && tasks[dateString][taskIndex] && tasks[dateString][taskIndex].subtasks[subtaskIndex]) {
+                tasks[dateString][taskIndex].subtasks.splice(subtaskIndex, 1);
+
+                // Re-check main task completion
+                const task = tasks[dateString][taskIndex];
+                const allSubtasksComplete = task.subtasks.every(st => st.completed);
+                task.completed = allSubtasksComplete;
+
+                renderTasks(dateString);
+                renderTodayTasks();
+                renderUpcomingTasks();
+                // NEW: Refresh projects view if it's active
+                if (tracksPage.classList.contains('active') && selectedTrackIndex !== null) {
+                    renderProjects();
+                }
+                await saveData();
+            }
+        }
+
+        /**
+         * Deletes a task.
+         * @param {string} dateString The date of the task.
+         * @param {number} index The index of the task.
+         */
+        async function deleteTask(dateString, index) {
+            if (tasks[dateString] && tasks[dateString][index]) {
+                tasks[dateString].splice(index, 1);
+                renderTasks(dateString);
+                renderCalendar(currentDate);
+                renderTodayTasks();
+                renderUpcomingTasks();
+                renderTimeBlocking(dateString); // NEW: Update time blocking
+                await saveData();
+            }
+        }
+
+        /**
+         * NEW: Renders the list of tracks on the Tracks page.
+         */
+        function renderTracks() {
+            if (!tracksList) return; // Guard clause
+            tracksList.innerHTML = '';
+
+            if (tracks.length === 0) {
+                const noTracks = document.createElement('li');
+                noTracks.classList.add('text-gray-400', 'text-sm', 'italic');
+                noTracks.textContent = 'No tracks created yet. Add one above!';
+                tracksList.appendChild(noTracks);
+                return;
+            }
+
+            tracks.forEach((track, index) => {
+                const li = document.createElement('li');
+                li.classList.add('text-lg', 'text-white', 'p-4', 'rounded-lg', 'flex', 'items-center', 'justify-between');
+                // NEW: Apply saved color
+                li.style.backgroundColor = track.color || '#6b21a8';
+
+                // UPDATED: Wrap left side in a div
+                const leftSide = document.createElement('div');
+                leftSide.classList.add('flex', 'items-center', 'space-x-3');
+
+                // --- NEW: This is now the "Static View" for Tracks ---
+                const staticView = document.createElement('div');
+                staticView.classList.add('flex', 'items-center', 'space-x-3', 'flex-1');
+
+                // NEW: Color picker for existing track
+                const trackColorInput = document.createElement('input');
+                trackColorInput.type = 'color';
+                trackColorInput.value = track.color || '#6b21a8';
+                trackColorInput.classList.add('w-8', 'h-8', 'p-0', 'border-none', 'rounded', 'cursor-pointer');
+                // Stop propagation to prevent click on trackText
+                trackColorInput.addEventListener('click', (e) => e.stopPropagation());
+                trackColorInput.addEventListener('change', (e) => {
+                    e.stopPropagation(); // Stop event from bubbling
+                    updateTrackColor(index, e.target.value);
+                });
+
+                // UPDATED: Changed from a span to a button to make it clickable
+                const trackText = document.createElement('button');
+                trackText.textContent = track.name;
+                trackText.classList.add('text-left', 'hover:opacity-80', 'transition-opacity', 'flex-1');
+                trackText.addEventListener('click', () => {
+                    // NEW: Show the projects view for this track
+                    selectedTrackIndex = index;
+                    tracksCard.classList.add('hidden');
+                    projectsCard.classList.remove('hidden');
+                    renderProjects();
+                });
+
+                // --- NEW: Edit Button for Track ---
+                const editBtn = document.createElement('button');
+                editBtn.classList.add('p-2', 'text-yellow-300', 'hover:text-yellow-500', 'transition-colors', 'duration-200');
+                editBtn.innerHTML = `
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.536L16.732 3.732z" />
+                                        </svg>
+                                    `;
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.classList.add('p-2', 'text-red-300', 'hover:text-red-500', 'transition-colors', 'duration-200');
+                deleteBtn.innerHTML = `
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    `;
+                deleteBtn.addEventListener('click', () => {
+                    deleteTrack(index);
+                });
+
+                // NEW: Append items to staticView
+                staticView.appendChild(trackColorInput);
+                staticView.appendChild(trackText);
+
+                leftSide.appendChild(staticView); // Append static view to left side
+
+                const buttonContainer = document.createElement('div');
+                buttonContainer.classList.add('flex', 'items-center');
+                buttonContainer.appendChild(editBtn);
+                buttonContainer.appendChild(deleteBtn);
+
+                li.appendChild(leftSide); // Append left side
+                li.appendChild(buttonContainer); // Append right side (buttons)
+
+                // --- NEW: Edit View for Track ---
+                const editView = document.createElement('div');
+                editView.classList.add('hidden', 'space-y-2', 'mt-2', 'w-full');
+
+                const editInput = document.createElement('input');
+                editInput.type = 'text';
+                editInput.value = track.name;
+                editInput.classList.add('w-full', 'p-2', 'rounded-lg', 'border', 'border-gray-300', 'text-black', 'focus:outline-none', 'focus:ring-1', 'focus:ring-purple-500');
+
+                const buttonRow = document.createElement('div');
+                buttonRow.classList.add('flex', 'space-x-2');
+
+                const saveBtn = document.createElement('button');
+                saveBtn.textContent = 'Save';
+                saveBtn.classList.add('flex-1', 'p-2', 'bg-purple-900', 'text-white', 'rounded-lg', 'hover:bg-purple-800');
+
+                const cancelBtn = document.createElement('button');
+                cancelBtn.textContent = 'Cancel';
+                cancelBtn.classList.add('flex-1', 'p-2', 'bg-gray-600', 'text-white', 'rounded-lg', 'hover:bg-gray-500');
+
+                buttonRow.appendChild(saveBtn);
+                buttonRow.appendChild(cancelBtn);
+
+                editView.appendChild(editInput);
+                editView.appendChild(buttonRow);
+                li.appendChild(editView); // Add edit view to li
+                li.classList.add('flex-wrap'); // Allow wrapping for edit view
+
+                // --- NEW: Event Listeners for Track Edit ---
+                editBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    leftSide.classList.add('hidden'); // Hide color picker + name
+                    buttonContainer.classList.add('hidden'); // Hide edit/delete buttons
+                    editView.classList.remove('hidden');
+                });
+
+                cancelBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    leftSide.classList.remove('hidden');
+                    buttonContainer.classList.remove('hidden');
+                    editView.classList.add('hidden');
+                    editInput.value = track.name; // Reset value
+                });
+
+                saveBtn.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    const newName = editInput.value.trim();
+                    if (newName && newName !== track.name) {
+                        tracks[index].name = newName;
+                        await updateTasksForTrackRename(index, newName); // Update tasks
+                        await saveData();
+                        renderTracks();
+                        renderTimelineFilters(); // NEW: Update filters
+                    } else {
+                        // Just close the view if name is same or empty
+                        leftSide.classList.remove('hidden');
+                        buttonContainer.classList.remove('hidden');
+                        editView.classList.add('hidden');
+                    }
+                });
+                // --- End Track Edit ---
+
+                tracksList.appendChild(li);
+            });
+        }
+
+        /**
+         * NEW: Adds a new track.
+         */
+        async function addTrack() {
+            if (!newTrackInput) return;
+            const trackName = newTrackInput.value.trim();
+            const trackColor = newTrackColorInput.value; // NEW
+            if (trackName === '') return;
+
+            // NEW: Add a projects array and color to each new track
+            tracks.push({ name: trackName, projects: [], color: trackColor });
+            newTrackInput.value = '';
+            newTrackColorInput.value = '#6b21a8'; // Reset to default
+            renderTracks();
+            renderTimelineFilters(); // NEW: Update filters
+            await saveData();
+        }
+
+        /**
+         * NEW: Deletes a track.
+         * @param {number} index The index of the track to delete.
+         */
+        async function deleteTrack(index) {
+            if (tracks[index]) {
+                const trackIndex = index; // The index of the track being deleted
+                tracks.splice(index, 1);
+
+                // NEW: Update all tasks associated with this track
+                for (const dateString in tasks) {
+                    if (Array.isArray(tasks[dateString])) {
+                        tasks[dateString].forEach(task => {
+                            if (task.trackIndex === trackIndex) {
+                                // Un-assign the task
+                                task.trackIndex = null;
+                                task.projectIndex = null;
+                                task.trackName = null;
+                                task.projectName = null;
+                            } else if (task.trackIndex > trackIndex) {
+                                // Decrement the index for all tasks in subsequent tracks
+                                task.trackIndex--;
+                            }
+                        });
+                    }
+                }
+
+                renderTracks();
+                renderTimelineFilters(); // NEW: Update filters
+                await saveData();
+            }
+        }
+
+        /**
+         * NEW: Updates all tasks associated with a track when its name is changed.
+         */
+        async function updateTasksForTrackRename(trackIndex, newTrackName) {
+            for (const dateString in tasks) {
+                if (Array.isArray(tasks[dateString])) {
+                    tasks[dateString].forEach(task => {
+                        if (task.trackIndex === trackIndex) {
+                            task.trackName = newTrackName;
+                        }
+                    });
+                }
+            }
+            // Note: saveData() is called by the parent function (e.g., in saveBtn listener)
+        }
+
+        /**
+         * NEW: Updates all tasks associated with a project when its name is changed.
+         */
+        async function updateTasksForProjectRename(trackIndex, projectIndex, newProjectName) {
+            for (const dateString in tasks) {
+                if (Array.isArray(tasks[dateString])) {
+                    tasks[dateString].forEach(task => {
+                        if (task.trackIndex === trackIndex && task.projectIndex === projectIndex) {
+                            task.projectName = newProjectName;
+                        }
+                    });
+                }
+            }
+            // Note: saveData() is called by the parent function
+        }
+
+        /**
+         * NEW: Finds all tasks associated with a specific track.
+         * @param {number} trackIndex - The index of the parent track.
+         * @returns {Object} An object where keys are date strings and values are task arrays.
+         */
+        function findTasksForTrack(trackIndex) {
+            const trackTasks = {};
+            for (const dateString in tasks) {
+                // Ensure we are only iterating over date keys, not __tracks
+                if (Array.isArray(tasks[dateString])) {
+                    tasks[dateString].forEach(task => {
+                        if (task.trackIndex === trackIndex) {
+                            if (!trackTasks[dateString]) {
+                                trackTasks[dateString] = [];
+                            }
+                            trackTasks[dateString].push(task);
+                        }
+                    });
+                }
+            }
+            return trackTasks;
+        }
+
+        /**
+         * NEW: Finds all tasks associated with a specific project.
+         * @param {number} trackIndex - The index of the parent track.
+         * @param {number} projectIndex - The index of the project.
+         * @returns {Array} An array of objects { task, date }.
+         */
+        function findTasksForProject(trackIndex, projectIndex) {
+            const foundTasks = [];
+            for (const dateString in tasks) {
+                // Ensure we are only iterating over date keys, not __tracks
+                if (Array.isArray(tasks[dateString])) {
+                    // UPDATED: Get the index
+                    tasks[dateString].forEach((task, index) => {
+                        if (task.trackIndex === trackIndex && task.projectIndex === projectIndex) {
+                            // UPDATED: Push the original index
+                            foundTasks.push({ task: task, date: dateString, originalIndex: index });
+                        }
+                    });
+                }
+            }
+            // Sort tasks by date
+            foundTasks.sort((a, b) => new Date(a.date) - new Date(b.date));
+            return foundTasks;
+        }
+
+        /**
+         * NEW: Renders the upcoming tasks timeline for a specific track.
+         * @param {number} trackIndex The index of the track.
+         */
+        function renderTrackTimeline(trackIndex) {
+            const timelineScroller = document.getElementById('track-timeline-scroller');
+            if (!timelineScroller) return; // Safety check
+
+            timelineScroller.innerHTML = '';
+            const trackTasks = findTasksForTrack(trackIndex);
+            const today = new Date();
+
+            const upcomingDates = [];
+            const daysToShow = 14; // Show up to 2 weeks in advance
+
+            for (let i = 0; i < daysToShow; i++) {
+                const date = new Date(today);
+                date.setDate(today.getDate() + i);
+                upcomingDates.push(date);
+            }
+
+            let tasksFoundInTimeline = false;
+            upcomingDates.forEach(date => {
+                const dateString = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+                const dayTasks = trackTasks[dateString] || [];
+
+                if (dayTasks.length > 0) {
+                    tasksFoundInTimeline = true;
+                    const card = document.createElement('div');
+                    // Use the same styling as the main timeline
+                    card.classList.add('timeline-item', 'flex-none', 'p-4', 'rounded-xl', 'text-center', 'relative');
+
+                    if (dateString === `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`) {
+                        card.classList.add('bg-sky-300', 'text-black');
+                    } else {
+                        card.classList.add('bg-purple-700', 'text-white');
+                    }
+
+                    const monthAbbr = date.toLocaleString('en-US', { month: 'short' }).toUpperCase();
+                    const dayNum = date.getDate();
+
+                    card.innerHTML = `
+                                            <p class="font-semibold text-sm">${monthAbbr}.</p>
+                                            <p class="font-bold text-xl">${dayNum}${dayNum === 1 || dayNum === 21 || dayNum === 31 ? 'ST' : dayNum === 2 || dayNum === 22 ? 'ND' : dayNum === 3 || dayNum === 23 ? 'RD' : 'TH'}</p>
+                                        `;
+
+                    // Render the tasks directly in the panel
+                    const taskList = document.createElement('div');
+                    taskList.classList.add('mt-2', 'space-y-1');
+                    dayTasks.forEach(task => {
+                        const taskType = task.taskType || 'task'; // Default
+
+                        const taskText = document.createElement('p');
+                        taskText.classList.add('text-xs', 'text-white', 'break-words');
+                        if (task.completed) {
+                            taskText.classList.add('line-through', 'text-gray-400');
+                        }
+
+                        // NEW: Time string logic for all types
+                        let timeString = '';
+                        let icon = '';
+                        if (taskType === 'task') {
+                            timeString = task.hours || task.minutes
+                                ? ` (${task.hours ? task.hours + 'h' : ''}${task.minutes ? (task.hours ? ' ' : '') + task.minutes + 'm' : ''})`
+                                : '';
+                        } else if (taskType === 'event') {
+                            timeString = task.eventTime ? ` (${formatEventTime(task.eventTime)})` : '';
+                            icon = '🗓️ ';
+                        } else if (taskType === 'deadline') {
+                            icon = '🚩 ';
+                        }
+
+                        taskText.textContent = icon + task.text + timeString;
+                        taskList.appendChild(taskText);
+
+                        // Display Project Badge
+                        if (task.projectName) {
+                            const projectBadge = document.createElement('p');
+                            projectBadge.textContent = `[${task.projectName}]`;
+                            projectBadge.classList.add('text-xs', 'font-semibold', 'opacity-80', 'ml-1', 'px-1', 'rounded-sm', 'inline-block');
+
+                            // Apply project color (or track color as fallback)
+                            if (task.trackIndex !== null && task.projectIndex !== null && tracks[task.trackIndex] && tracks[task.trackIndex].projects[task.projectIndex] && tracks[task.trackIndex].projects[task.projectIndex].color) {
+                                projectBadge.style.backgroundColor = tracks[task.trackIndex].projects[task.projectIndex].color;
+                            } else if (task.trackIndex !== null && tracks[task.trackIndex] && tracks[task.trackIndex].color) {
+                                projectBadge.style.backgroundColor = tracks[task.trackIndex].color;
+                            }
+                            projectBadge.classList.add('text-white');
+                            taskList.appendChild(projectBadge);
+                        }
+
+                        // Render sub-tasks for timeline (Tasks only)
+                        if (taskType === 'task' && task.subtasks && task.subtasks.length > 0) {
+                            task.subtasks.forEach(subtask => {
+                                const subtaskTextEl = document.createElement('p');
+                                subtaskTextEl.classList.add('text-xs', 'text-gray-200', 'ml-2');
+                                if (subtask.completed) {
+                                    subtaskTextEl.classList.add('line-through', 'text-gray-400');
+                                }
+                                const timeString = subtask.hours || subtask.minutes
+                                    ? ` (${subtask.hours ? subtask.hours + 'h' : ''}${subtask.minutes ? (subtask.hours ? ' ' : '') + subtask.minutes + 'm' : ''})`
+                                    : '';
+                                subtaskTextEl.textContent = `- ${subtask.text}` + timeString;
+                                taskList.appendChild(subtaskTextEl);
+                            });
+                        }
+                    });
+                    card.appendChild(taskList);
+                    timelineScroller.appendChild(card);
+                }
+            });
+
+            if (!tasksFoundInTimeline) {
+                const noTasks = document.createElement('p');
+                noTasks.classList.add('text-gray-400', 'text-sm', 'italic');
+                noTasks.textContent = 'No upcoming tasks found for this track.';
+                timelineScroller.appendChild(noTasks);
+            }
+        }
+
+        /**
+         * NEW: Renders the list of projects for the selected track.
+         */
+        function renderProjects() {
+            if (selectedTrackIndex === null || !tracks[selectedTrackIndex]) {
+                return; // Safety check
+            }
+
+            // NEW: Render the timeline for this track
+            renderTrackTimeline(selectedTrackIndex);
+
+            const track = tracks[selectedTrackIndex];
+            projectsCardTitle.textContent = `PROJECTS FOR ${track.name.toUpperCase()}`;
+            projectsList.innerHTML = '';
+
+            if (track.projects.length === 0) {
+                const noProjects = document.createElement('li');
+                noProjects.classList.add('text-gray-400', 'text-sm', 'italic');
+                noProjects.textContent = 'No projects created for this track yet.';
+                projectsList.appendChild(noProjects);
+                // Still show the "Add Task" button even if no projects
+            }
+
+            track.projects.forEach((project, index) => {
+                const li = document.createElement('li');
+                li.classList.add('text-md', 'text-white', 'p-3', 'rounded-lg', 'flex', 'items-center', 'justify-between');
+                // NEW: Apply project color
+                li.style.backgroundColor = project.color || track.color;
+
+                // NEW: Wrap left side in a div
+                const leftSide = document.createElement('div');
+                leftSide.classList.add('flex', 'items-center', 'space-x-3');
+
+                // --- NEW: Static View for Project ---
+                const staticView = document.createElement('div');
+                staticView.classList.add('flex', 'items-center', 'space-x-3');
+
+                // NEW: Color picker for project
+                const projectColorInput = document.createElement('input');
+                projectColorInput.type = 'color';
+                projectColorInput.value = project.color || track.color;
+                projectColorInput.classList.add('w-8', 'h-8', 'p-0', 'border-none', 'rounded', 'cursor-pointer');
+                projectColorInput.addEventListener('click', (e) => e.stopPropagation()); // Prevent clicks from bubbling
+                projectColorInput.addEventListener('change', (e) => {
+                    e.stopPropagation();
+                    updateProjectColor(index, e.target.value);
+                });
+
+                const projectText = document.createElement('span');
+                projectText.textContent = project.name;
+
+                // --- NEW: Edit Button for Project ---
+                const editBtn = document.createElement('button');
+                editBtn.classList.add('p-1', 'text-yellow-300', 'hover:text-yellow-500', 'transition-colors', 'duration-200');
+                editBtn.innerHTML = `
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.536L16.732 3.732z" />
+                                        </svg>
+                                    `;
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.classList.add('p-1', 'text-red-300', 'hover:text-red-500', 'transition-colors', 'duration-200');
+                deleteBtn.innerHTML = `
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    `;
+                deleteBtn.addEventListener('click', () => {
+                    deleteProject(index);
+                });
+
+                // NEW: Append items to staticView
+                staticView.appendChild(projectColorInput);
+                staticView.appendChild(projectText);
+
+                leftSide.appendChild(staticView);
+
+                const buttonContainer = document.createElement('div');
+                buttonContainer.classList.add('flex', 'items-center');
+                buttonContainer.appendChild(editBtn);
+                buttonContainer.appendChild(deleteBtn);
+
+                li.appendChild(leftSide);
+                li.appendChild(buttonContainer);
+
+                // --- NEW: Edit View for Project ---
+                const editView = document.createElement('div');
+                editView.classList.add('hidden', 'space-y-2', 'mt-2', 'w-full');
+
+                const editInput = document.createElement('input');
+                editInput.type = 'text';
+                editInput.value = project.name;
+                editInput.classList.add('w-full', 'p-2', 'rounded-lg', 'border', 'border-gray-300', 'text-black', 'focus:outline-none', 'focus:ring-1', 'focus:ring-purple-500');
+
+                const buttonRow = document.createElement('div');
+                buttonRow.classList.add('flex', 'space-x-2');
+
+                const saveBtn = document.createElement('button');
+                saveBtn.textContent = 'Save';
+                saveBtn.classList.add('flex-1', 'p-2', 'bg-purple-900', 'text-white', 'rounded-lg', 'hover:bg-purple-800');
+
+                const cancelBtn = document.createElement('button');
+                cancelBtn.textContent = 'Cancel';
+                cancelBtn.classList.add('flex-1', 'p-2', 'bg-gray-600', 'text-white', 'rounded-lg', 'hover:bg-gray-500');
+
+                buttonRow.appendChild(saveBtn);
+                buttonRow.appendChild(cancelBtn);
+
+                editView.appendChild(editInput);
+                editView.appendChild(buttonRow);
+                li.appendChild(editView); // Add edit view to li
+                li.classList.add('flex-wrap'); // Allow wrapping
+
+                // --- NEW: Event Listeners for Project Edit ---
+                editBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    leftSide.classList.add('hidden');
+                    buttonContainer.classList.add('hidden');
+                    editView.classList.remove('hidden');
+                });
+
+                cancelBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    leftSide.classList.remove('hidden');
+                    buttonContainer.classList.remove('hidden');
+                    editView.classList.add('hidden');
+                    editInput.value = project.name; // Reset value
+                });
+
+                saveBtn.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    const newName = editInput.value.trim();
+                    if (newName && newName !== project.name) {
+                        tracks[selectedTrackIndex].projects[index].name = newName;
+                        await updateTasksForProjectRename(selectedTrackIndex, index, newName);
+                        await saveData();
+                        renderProjects();
+                    } else {
+                        // Just close the view
+                        leftSide.classList.remove('hidden');
+                        buttonContainer.classList.remove('hidden');
+                        editView.classList.add('hidden');
+                    }
+                });
+                // --- End Project Edit ---
+
+                // --- NEW: Render tasks for this project ---
+                const tasksForProject = findTasksForProject(selectedTrackIndex, index);
+                if (tasksForProject.length > 0) {
+                    const tasksListEl = document.createElement('ul');
+                    tasksListEl.classList.add('mt-3', 'ml-8', 'pl-4', 'space-y-2', 'border-l', 'border-purple-900'); // Indented list
+
+                    tasksForProject.forEach(({ task, date, originalIndex }) => {
+                        const taskLi = document.createElement('li');
+                        // Use a neutral class, as this container holds two views
+                        taskLi.classList.add('text-sm', 'text-gray-300');
+                        const taskType = task.taskType || 'task'; // Default
+
+                        // --- NEW: Static View (What is normally visible) ---
+                        const staticView = document.createElement('div');
+                        staticView.classList.add('flex', 'items-center', 'justify-between', 'space-x-3');
+
+                        const staticLeft = document.createElement('div');
+                        staticLeft.classList.add('flex', 'items-center', 'space-x-3');
+
+                        // --- NEW: Icon for Project Task ---
+                        const iconContainer = document.createElement('div');
+                        iconContainer.classList.add('task-icon', 'text-sm'); // Smaller icon
+                        if (taskType === 'event') {
+                            iconContainer.innerHTML = '🗓️';
+                        } else if (taskType === 'deadline') {
+                            iconContainer.innerHTML = '🚩';
+                        }
+                        // No icon for default 'task', date badge is enough
+
+                        // Date badge
+                        const taskDate = document.createElement('span');
+                        taskDate.classList.add('text-xs', 'font-semibold', 'bg-purple-900', 'px-2', 'py-0.5', 'rounded-md', 'flex-shrink-0');
+                        taskDate.textContent = new Date(date).toLocaleString('en-US', { month: 'short', day: 'numeric' });
+
+                        // Task text
+                        const taskText = document.createElement('span');
+                        // NEW: Time string logic
+                        // ... existing code ...
+                        let timeString = '';
+                        if (taskType === 'task') {
+                            timeString = task.hours || task.minutes
+                                ? ` (${task.hours ? task.hours + 'h' : ''}${task.minutes ? (task.hours ? ' ' : '') + task.minutes + 'm' : ''})`
+                                : '';
+                        } else if (taskType === 'event') {
+                            timeString = task.eventTime ? ` (${formatEventTime(task.eventTime)})` : '';
+                        }
+                        // Deadlines have no time string
+
+                        taskText.textContent = task.text + timeString;
+                        // ... existing code ...
+                        if (task.completed) {
+                            taskText.classList.add('line-through', 'opacity-60');
+                        }
+
+                        staticLeft.appendChild(iconContainer); // NEW
+                        staticLeft.appendChild(taskDate);
+                        staticLeft.appendChild(taskText);
+
+                        // Edit button
+                        const editBtn = document.createElement('button');
+                        editBtn.classList.add('p-1', 'text-gray-400', 'hover:text-white', 'transition-colors');
+                        editBtn.innerHTML = `
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.536L16.732 3.732z" />
+                                                </svg>
+                                            `;
+
+                        staticView.appendChild(staticLeft);
+                        staticView.appendChild(editBtn);
+
+                        // --- NEW: Edit View (Hidden by default) ---
+                        const editView = document.createElement('div');
+                        editView.classList.add('hidden', 'space-y-2', 'mt-2');
+
+                        const editInput = document.createElement('input');
+                        editInput.type = 'text';
+                        editInput.value = task.text;
+                        editInput.classList.add('w-full', 'p-2', 'rounded-lg', 'border', 'border-gray-300', 'text-black', 'focus:outline-none', 'focus:ring-1', 'focus:ring-purple-500');
+
+                        // NEW: Wrapper for time inputs
+                        const timeInputsWrapper = document.createElement('div');
+
+                        const timeInputs = document.createElement('div');
+                        timeInputs.classList.add('flex', 'space-x-2');
+
+                        const editHours = document.createElement('input');
+                        editHours.type = 'number';
+                        editHours.value = task.hours || '';
+                        editHours.placeholder = 'hrs';
+                        editHours.classList.add('w-1/2', 'p-2', 'rounded-lg', 'border', 'border-gray-300', 'text-black', 'focus:outline-none', 'focus:ring-1', 'focus:ring-purple-500');
+
+                        const editMinutes = document.createElement('input');
+                        editMinutes.type = 'number';
+                        editMinutes.value = task.minutes || '';
+                        editMinutes.placeholder = 'min';
+                        editMinutes.classList.add('w-1/2', 'p-2', 'rounded-lg', 'border', 'border-gray-300', 'text-black', 'focus:outline-none', 'focus:ring-1', 'focus:ring-purple-500');
+
+                        timeInputs.appendChild(editHours);
+                        timeInputs.appendChild(editMinutes);
+
+                        // NEW: Edit Event Time
+                        const editEventTime = document.createElement('input');
+                        editEventTime.type = 'time';
+                        editEventTime.value = task.eventTime || '';
+                        editEventTime.classList.add('w-full', 'p-2', 'rounded-lg', 'border', 'border-gray-300', 'text-black', 'focus:outline-none', 'focus:ring-1', 'focus:ring-purple-500');
+
+                        // NEW: Logic to show correct time inputs
+                        if (taskType === 'task') {
+                            timeInputsWrapper.appendChild(timeInputs);
+                            editEventTime.classList.add('hidden');
+                        } else if (taskType === 'event') {
+                            timeInputsWrapper.appendChild(editEventTime);
+                            timeInputsWrapper.appendChild(timeInputs); // <-- ADDED THIS
+                        }
+                        // No time inputs for deadline
+
+                        const buttonRow = document.createElement('div');
+                        buttonRow.classList.add('flex', 'space-x-2');
+
+                        const saveBtn = document.createElement('button');
+                        saveBtn.textContent = 'Save';
+                        saveBtn.classList.add('flex-1', 'p-2', 'bg-purple-900', 'text-white', 'rounded-lg', 'hover:bg-purple-800');
+
+                        const cancelBtn = document.createElement('button');
+                        cancelBtn.textContent = 'Cancel';
+                        cancelBtn.classList.add('flex-1', 'p-2', 'bg-gray-600', 'text-white', 'rounded-lg', 'hover:bg-gray-500');
+
+                        buttonRow.appendChild(saveBtn);
+                        buttonRow.appendChild(cancelBtn);
+
+                        editView.appendChild(editInput);
+                        // NEW: Append wrapper
+                        if (taskType !== 'deadline') {
+                            editView.appendChild(timeInputsWrapper);
+                        }
+                        editView.appendChild(buttonRow);
+
+                        // --- NEW: Event Listeners for Edit/Static Views ---
+                        editBtn.addEventListener('click', () => {
+                            staticView.classList.add('hidden');
+                            editView.classList.remove('hidden');
+                        });
+
+                        cancelBtn.addEventListener('click', () => {
+                            staticView.classList.remove('hidden');
+                            editView.classList.add('hidden');
+                            // Reset values
+                            editInput.value = task.text;
+                            editHours.value = task.hours || '';
+                            editMinutes.value = task.minutes || '';
+                            editEventTime.value = task.eventTime || '';
+                        });
+
+                        saveBtn.addEventListener('click', async () => {
+                            const taskToUpdate = tasks[date][originalIndex];
+                            if (taskToUpdate) {
+                                taskToUpdate.text = editInput.value.trim();
+
+                                // NEW: Save correct time
+                                if (taskType === 'task') {
+                                    taskToUpdate.hours = parseInt(editHours.value) || null;
+                                    taskToUpdate.minutes = parseInt(editMinutes.value) || null;
+                                } else if (taskType === 'event') {
+                                    taskToUpdate.eventTime = editEventTime.value || null;
+                                }
+
+                                await saveData();
+                                renderProjects(); // Refresh this project view
+
+                                // Refresh other views
+                                renderTodayTasks();
+                                renderUpcomingTasks();
+                                if (calendarPage.classList.contains('active')) {
+                                    renderTasks(`${selectedDate.getFullYear()}-${selectedDate.getMonth() + 1}-${selectedDate.getDate()}`);
+                                }
+                            }
+                        });
+
+                        taskLi.appendChild(staticView);
+                        taskLi.appendChild(editView);
+
+                        // --- NEW: Render sub-tasks for this project task ---
+                        // NEW: Only for 'task' type
+                        if (taskType === 'task' && task.subtasks && task.subtasks.length > 0) {
+                            const subtaskList = document.createElement('div');
+                            subtaskList.classList.add('ml-10', 'mt-2', 'space-y-2', 'pl-4', 'border-l', 'border-gray-700'); // Indented
+
+                            task.subtasks.forEach((subtask, subIndex) => {
+                                const subLi = document.createElement('div');
+                                // UPDATED:
+                                subLi.classList.add('text-sm', 'text-gray-300', 'flex', 'flex-col');
+
+                                // --- NEW: Static View for Subtask (Projects) ---
+                                const subStaticView = document.createElement('div');
+                                subStaticView.classList.add('flex', 'items-center', 'justify-between');
+
+                                const subTaskContent = document.createElement('div');
+                                subTaskContent.classList.add('flex', 'items-center', 'space-x-3');
+
+                                const subCheckbox = document.createElement('input');
+                                subCheckbox.type = 'checkbox';
+                                subCheckbox.checked = subtask.completed;
+                                subCheckbox.classList.add('w-4', 'h-4', 'rounded', 'accent-purple-500', 'flex-shrink-0');
+                                subCheckbox.addEventListener('change', () => {
+                                    // Use 'date' and 'originalIndex' from the parent loop
+                                    toggleSubtaskCompleted(date, originalIndex, subIndex);
+                                });
+
+                                const subTaskText = document.createElement('span');
+                                const timeString = subtask.hours || subtask.minutes
+                                    ? ` (${subtask.hours ? subtask.hours + 'h' : ''}${subtask.minutes ? (subtask.hours ? ' ' : '') + subtask.minutes + 'm' : ''})`
+                                    : '';
+                                subTaskText.textContent = subtask.text + timeString;
+
+                                if (subtask.completed) {
+                                    subTaskText.classList.add('line-through', 'text-gray-400', 'italic');
+                                }
+
+                                // --- NEW: Button Container for Subtask (Projects) ---
+                                const subButtonContainer = document.createElement('div');
+                                subButtonContainer.classList.add('flex', 'items-center');
+
+                                const subEditBtn = document.createElement('button');
+                                subEditBtn.classList.add('p-1', 'text-yellow-300', 'hover:text-yellow-500', 'transition-colors', 'duration-200');
+                                subEditBtn.innerHTML = `
+                                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.536L16.732 3.732z" />
+                                                        </svg>
+                                                    `;
+
+                                const deleteSubtaskBtn = document.createElement('button');
+                                deleteSubtaskBtn.classList.add('p-1', 'text-red-300', 'hover:text-red-500', 'transition-colors', 'duration-200');
+                                deleteSubtaskBtn.innerHTML = `
+                                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                                        </svg>
+                                                    `;
+                                deleteSubtaskBtn.addEventListener('click', () => {
+                                    // Use 'date' and 'originalIndex' from the parent loop
+                                    deleteSubtask(date, originalIndex, subIndex);
+                                });
+
+                                subTaskContent.appendChild(subCheckbox);
+                                subTaskContent.appendChild(subTaskText);
+
+                                subButtonContainer.appendChild(subEditBtn);
+                                subButtonContainer.appendChild(deleteSubtaskBtn);
+
+                                subStaticView.appendChild(subTaskContent);
+                                subStaticView.appendChild(subButtonContainer);
+                                subLi.appendChild(subStaticView);
+
+                                // --- NEW: Edit View for Subtask (Projects) ---
+                                const subEditView = document.createElement('div');
+                                subEditView.classList.add('hidden', 'space-y-2', 'mt-2', 'pl-7'); // Indented
+
+                                const subEditInput = document.createElement('input');
+                                subEditInput.type = 'text';
+                                subEditInput.value = subtask.text;
+                                subEditInput.classList.add('w-full', 'p-2', 'rounded-lg', 'border', 'border-gray-300', 'text-black', 'focus:outline-none', 'focus:ring-1', 'focus:ring-purple-500');
+
+                                const subTimeInputs = document.createElement('div');
+                                subTimeInputs.classList.add('flex', 'space-x-2');
+
+                                const subEditHours = document.createElement('input');
+                                subEditHours.type = 'number';
+                                subEditHours.value = subtask.hours || '';
+                                subEditHours.placeholder = 'hrs';
+                                subEditHours.classList.add('w-1/2', 'p-2', 'rounded-lg', 'border', 'border-gray-300', 'text-black', 'focus:outline-none', 'focus:ring-1', 'focus:ring-purple-500');
+
+                                const subEditMinutes = document.createElement('input');
+                                subEditMinutes.type = 'number';
+                                subEditMinutes.value = subtask.minutes || '';
+                                subEditMinutes.placeholder = 'min';
+                                subEditMinutes.classList.add('w-1/2', 'p-2', 'rounded-lg', 'border', 'border-gray-300', 'text-black', 'focus:outline-none', 'focus:ring-1', 'focus:ring-purple-500');
+
+                                subTimeInputs.appendChild(subEditHours);
+                                subTimeInputs.appendChild(subEditMinutes);
+
+                                const subButtonRow = document.createElement('div');
+                                subButtonRow.classList.add('flex', 'space-x-2');
+
+                                const subSaveBtn = document.createElement('button');
+                                subSaveBtn.textContent = 'Save';
+                                subSaveBtn.classList.add('flex-1', 'p-2', 'bg-purple-900', 'text-white', 'rounded-lg', 'hover:bg-purple-800');
+
+                                const subCancelBtn = document.createElement('button');
+                                subCancelBtn.textContent = 'Cancel';
+                                subCancelBtn.classList.add('flex-1', 'p-2', 'bg-gray-600', 'text-white', 'rounded-lg', 'hover:bg-gray-500');
+
+                                subButtonRow.appendChild(subSaveBtn);
+                                subButtonRow.appendChild(subCancelBtn);
+
+                                subEditView.appendChild(subEditInput);
+                                subEditView.appendChild(subTimeInputs);
+                                subEditView.appendChild(subButtonRow);
+
+                                subLi.appendChild(subEditView); // Add edit view to subLi
+
+                                // --- NEW: Event Listeners for Subtask Edit (Projects) ---
+                                subEditBtn.addEventListener('click', () => {
+                                    subStaticView.classList.add('hidden');
+                                    subEditView.classList.remove('hidden');
+                                });
+
+                                subCancelBtn.addEventListener('click', () => {
+                                    subStaticView.classList.remove('hidden');
+                                    subEditView.classList.add('hidden');
+                                    // Reset values
+                                    subEditInput.value = subtask.text;
+                                    subEditHours.value = subtask.hours || '';
+                                    subEditMinutes.value = subtask.minutes || '';
+                                });
+
+                                subSaveBtn.addEventListener('click', async () => {
+                                    // Use 'date' and 'originalIndex' from parent task
+                                    const subtaskToUpdate = tasks[date][originalIndex].subtasks[subIndex];
+                                    if (subtaskToUpdate) {
+                                        subtaskToUpdate.text = subEditInput.value.trim();
+                                        subtaskToUpdate.hours = parseInt(subEditHours.value) || null;
+                                        subtaskToUpdate.minutes = parseInt(subEditMinutes.value) || null;
+
+                                        await saveData();
+                                        renderProjects(); // Refresh this project list
+
+                                        // Refresh other views
+                                        renderTodayTasks();
+                                        renderUpcomingTasks();
+                                    }
+                                });
+                                // --- End Subtask Edit (Projects) ---
+
+                                subtaskList.appendChild(subLi);
+                            });
+                            taskLi.appendChild(subtaskList); // Append sub-list to main project-task li
+                        }
+                        // --- End new sub-task rendering ---
+
+                        tasksListEl.appendChild(taskLi);
+                    });
+
+                    li.appendChild(tasksListEl); // Append the task list to the project item
+                }
+                // --- End new task rendering ---
+
+                // --- START NEW CODE: Add Task Button & Form (Projects) ---
+                const addActivityWrapper = document.createElement('div');
+                addActivityWrapper.classList.add('mt-3', 'ml-8');
+
+                const addTaskBtn = document.createElement('button');
+                addTaskBtn.textContent = 'Add Activity...';
+                addTaskBtn.classList.add('add-project-task-btn', 'text-sm', 'text-gray-300', 'hover:text-white', 'bg-purple-900', 'px-3', 'py-1', 'rounded-md', 'transition-colors');
+                addActivityWrapper.appendChild(addTaskBtn);
+
+                const addTaskForm = document.createElement('div');
+                addTaskForm.classList.add('add-task-form', 'hidden', 'mt-3', 'pl-4', 'space-y-2', 'border-l', 'border-purple-900');
+
+                // Form content
+                addTaskForm.innerHTML = `
+                                        <select class="project-task-type-select w-full p-2 rounded-lg border border-gray-300 text-black">
+                                            <option value="task">Task</option>
+                                            <option value="event">Event</option>
+                                            <option value="deadline">Deadline</option>
+                                        </select>
+                                        <input type="text" placeholder="New activity name..." class="w-full p-2 rounded-lg border border-gray-300 text-black">
+                                        <input type="date" class="w-full p-2 rounded-lg border border-gray-300 text-black">
+
+                                        <div class="project-task-time-wrapper flex space-x-2">
+                                            <input type="number" placeholder="hrs" class="w-1/2 p-2 rounded-lg border border-gray-300 text-black">
+                                            <input type="number" placeholder="min" class="w-1/2 p-2 rounded-lg border border-gray-300 text-black">
+                                        </div>
+
+                                        <input type="time" class="project-event-time-input w-full p-2 rounded-lg border border-gray-300 text-black hidden">
+
+                                        <div class="flex space-x-2">
+                                            <button class="save-project-task-btn flex-1 p-2 bg-purple-900 text-white rounded-lg hover:bg-purple-800">
+                                                Save
+                                            </button>
+                                            <button class="cancel-project-task-btn flex-1 p-2 bg-gray-600 text-white rounded-lg hover:bg-gray-500">
+                                                Cancel
+                                            </button>
+                                        </div>
+                                    `;
+
+                addActivityWrapper.appendChild(addTaskForm);
+                li.appendChild(addActivityWrapper);
+                // --- END NEW CODE ---
+
+                projectsList.appendChild(li);
+            });
+
+            // --- NEW: Event listeners for the "Add Task" forms ---
+            // We need to add these listeners *after* the items are created
+            projectsList.querySelectorAll('.add-project-task-btn').forEach((btn, projectIndex) => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    // Find the form within the same project 'li'
+                    const form = btn.closest('li').querySelector('.add-task-form');
+                    form.classList.toggle('hidden');
+                    // Set default date
+                    const dateInput = form.querySelector('input[type="date"]');
+                    if (!dateInput.value) {
+                        dateInput.valueAsDate = new Date();
+                    }
+                    // Trigger selector change to show correct fields
+                    form.querySelector('.project-task-type-select').dispatchEvent(new Event('change'));
+                });
+            });
+
+            projectsList.querySelectorAll('.cancel-project-task-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const form = btn.closest('.add-task-form');
+                    form.classList.add('hidden');
+                    // Clear inputs
+                    form.querySelector('input[type="text"]').value = '';
+                    form.querySelector('input[type="date"]').valueAsDate = new Date();
+                    form.querySelector('input[type="number"][placeholder="hrs"]').value = '';
+                    form.querySelector('input[type="number"][placeholder="min"]').value = '';
+                    form.querySelector('input[type="time"]').value = '';
+                    form.querySelector('select').value = 'task';
+                });
+            });
+
+            // NEW: Listener for type select in project form
+            projectsList.querySelectorAll('.project-task-type-select').forEach(select => {
+                select.addEventListener('change', (e) => {
+                    const form = e.target.closest('.add-task-form');
+                    const taskTimeWrapper = form.querySelector('.project-task-time-wrapper');
+                    const eventTimeInput = form.querySelector('.project-event-time-input');
+
+                    const type = e.target.value;
+                    if (type === 'task') {
+                        taskTimeWrapper.classList.remove('hidden');
+                        eventTimeInput.classList.add('hidden');
+                    } else if (type === 'event') {
+                        taskTimeWrapper.classList.remove('hidden'); // <-- CHANGED
+                        eventTimeInput.classList.remove('hidden');
+                    } else { // deadline
+                        taskTimeWrapper.classList.add('hidden');
+                        eventTimeInput.classList.add('hidden');
+                    }
+                });
+            });
+
+            projectsList.querySelectorAll('.save-project-task-btn').forEach((btn, projectIndex) => {
+                btn.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    const form = btn.closest('.add-task-form');
+
+                    const typeSelect = form.querySelector('select');
+                    const textInput = form.querySelector('input[type="text"]');
+                    const dateInput = form.querySelector('input[type="date"]');
+                    const hoursInput = form.querySelector('input[type="number"][placeholder="hrs"]');
+                    const minutesInput = form.querySelector('input[type="number"][placeholder="min"]');
+                    const eventTimeInput = form.querySelector('input[type="time"]');
+
+                    const taskType = typeSelect.value;
+                    const taskText = textInput.value.trim();
+                    const taskDate = dateInput.value; // YYYY-MM-DD
+
+                    if (!taskText || !taskDate) return; // Validation
+
+                    // Get track/project info
+                    const trackIndex = selectedTrackIndex;
+                    const trackName = tracks[trackIndex].name;
+                    const projectName = tracks[trackIndex].projects[projectIndex].name;
+
+                    // Convert YYYY-MM-DD to a timezone-safe date string key
+                    // Use UTC noon to avoid timezone shift issues
+                    const dateObj = new Date(taskDate + 'T12:00:00Z');
+                    const dateString = `${dateObj.getUTCFullYear()}-${dateObj.getUTCMonth() + 1}-${dateObj.getUTCDate()}`;
+
+                    // NEW: Create task object based on type
+                    const newTask = {
+                        text: taskText,
+                        taskType: taskType,
+                        completed: false,
+                        trackIndex: trackIndex,
+                        projectIndex: projectIndex,
+                        trackName: trackName,
+                        projectName: projectName
+                    };
+
+                    if (taskType === 'task') {
+                        newTask.hours = parseInt(hoursInput.value) || null;
+                        newTask.minutes = parseInt(minutesInput.value) || null;
+                        newTask.subtasks = [];
+                    } else if (taskType === 'event') {
+                        newTask.eventTime = eventTimeInput.value || null;
+                        // NEW: Save duration for events
+                        newTask.hours = parseInt(hoursInput.value) || null;
+                        newTask.minutes = parseInt(minutesInput.value) || null;
+                    }
+                    // Deadline has no extra properties
+
+                    if (!tasks[dateString]) {
+                        tasks[dateString] = [];
+                    }
+                    tasks[dateString].push(newTask);
+
+                    await saveData();
+
+                    // Reset form
+                    textInput.value = '';
+                    dateInput.valueAsDate = new Date();
+                    hoursInput.value = '';
+                    minutesInput.value = '';
+                    eventTimeInput.value = '';
+                    typeSelect.value = 'task';
+                    form.classList.add('hidden');
+
+                    // Re-render all relevant views
+                    renderProjects();
+                    renderTodayTasks();
+                    renderUpcomingTasks();
+                    renderTrackTimeline(trackIndex); // Refresh track timeline
+                    renderCalendar(currentDate); // Update calendar dots
+                });
+            });
+        }
+
+
+        /**
+         * NEW: Adds a new project to the currently selected track.
+         */
+        async function addProject() {
+            if (selectedTrackIndex === null || !tracks[selectedTrackIndex] || !newProjectInput) {
+                return;
+            }
+
+            const projectName = newProjectInput.value.trim();
+            if (projectName === '') return;
+
+            // NEW: Add project with default color from parent track
+            tracks[selectedTrackIndex].projects.push({
+                name: projectName,
+                color: tracks[selectedTrackIndex].color
+            });
+            newProjectInput.value = '';
+            renderProjects();
+            await saveData();
+        }
+
+        /**
+         * NEW: Updates the color of an existing project.
+         */
+        async function updateProjectColor(projectIndex, newColor) {
+            if (selectedTrackIndex === null || !tracks[selectedTrackIndex] || !tracks[selectedTrackIndex].projects[projectIndex]) {
+                return;
+            }
+            tracks[selectedTrackIndex].projects[projectIndex].color = newColor;
+            await saveData();
+            renderProjects(); // Re-render projects list
+
+            // Also refresh greeting page tasks if they are active
+            if (greetingPage.classList.contains('active')) {
+                renderTodayTasks();
+                renderUpcomingTasks();
+            }
+        }
+
+        /**
+         * NEW: Updates the color of an existing track.
+         */
+        async function updateTrackColor(trackIndex, newColor) {
+            if (!tracks[trackIndex]) return;
+
+            tracks[trackIndex].color = newColor;
+
+            // NEW: Cascade color update to projects that share the color
+            tracks[trackIndex].projects.forEach(project => {
+                // If project color was the same as the old track color, update it
+                // This logic is tricky without knowing the "old" color.
+                // Simpler: Just update all projects that don't have a *custom* color.
+                // For now, let's just save. A better logic would be needed.
+                // Let's assume for now: if user changes track color, they want projects to match
+                // UNLESS they've set a custom project color.
+                // This logic is hard to implement without storing "isCustomColor".
+                // Simple implementation: Don't cascade. User must update projects manually.
+            });
+
+            await saveData();
+            renderTracks(); // Re-render tracks list
+
+            // Also refresh greeting page tasks if they are active
+            if (greetingPage.classList.contains('active')) {
+                renderTodayTasks();
+                renderUpcomingTasks();
+            }
+        }
+
+        /**
+         * NEW: Deletes a project from the currently selected track.
+         * @param {number} index The index of the project to delete.
+         */
+        async function deleteProject(index) {
+            if (selectedTrackIndex === null || !tracks[selectedTrackIndex] || !tracks[selectedTrackIndex].projects[index]) {
+                return;
+            }
+
+            const trackIndex = selectedTrackIndex;
+            const projectIndex = index;
+            tracks[selectedTrackIndex].projects.splice(index, 1);
+
+            // NEW: Update all tasks associated with this project
+            for (const dateString in tasks) {
+                if (Array.isArray(tasks[dateString])) {
+                    tasks[dateString].forEach(task => {
+                        if (task.trackIndex === trackIndex && task.projectIndex === projectIndex) {
+                            // Un-assign the task
+                            task.trackIndex = null;
+                            task.projectIndex = null;
+                            task.trackName = null;
+                            task.projectName = null;
+                        } else if (task.trackIndex === trackIndex && task.projectIndex > projectIndex) {
+                            // Decrement the index for subsequent projects in the same track
+                            task.projectIndex--;
+                        }
+                    });
+                }
+            }
+
+            renderProjects();
+            await saveData();
+        }
+
+        /**
+         * NEW: Populates the project dropdown on the calendar page.
+         */
+        function populateProjectDropdown() {
+            if (!newTaskProjectSelect) return;
+
+            newTaskProjectSelect.innerHTML = ''; // Clear existing options
+
+            const defaultOption = document.createElement('option');
+            defaultOption.value = '';
+            defaultOption.textContent = '-- No Project --';
+            newTaskProjectSelect.appendChild(defaultOption);
+
+            tracks.forEach((track, trackIndex) => {
+                if (track.projects && track.projects.length > 0) {
+                    const optgroup = document.createElement('optgroup');
+                    optgroup.label = track.name;
+
+                    track.projects.forEach((project, projectIndex) => {
+                        const option = document.createElement('option');
+                        option.value = `${trackIndex}-${projectIndex}`; // Store indices as "track-project"
+                        option.textContent = project.name;
+                        optgroup.appendChild(option);
+                    });
+
+                    newTaskProjectSelect.appendChild(optgroup);
+                }
+            });
+        }
+
+        // Event listeners
+        addTaskBtn.addEventListener('click', addTask);
+        newTaskInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                addTask();
+            }
+        });
+
+        prevMonthBtn.addEventListener('click', () => {
+            currentDate.setMonth(currentDate.getMonth() - 1);
+            renderCalendar(currentDate);
+        });
+
+        nextMonthBtn.addEventListener('click', () => {
+            currentDate.setMonth(currentDate.getMonth() + 1);
+            renderCalendar(currentDate);
+        });
+
+        // NEW: Event listener for task type select
+        // NEW: Event listener for task type select
+        newTaskTypeSelect.addEventListener('change', () => {
+            const type = newTaskTypeSelect.value;
+
+            // Reset all time inputs
+            newTaskEventTime.classList.add('hidden');
+            newTaskStartTime.classList.add('hidden');
+            newTaskTimeSeparator.classList.remove('hidden');
+            newTaskEndTime.classList.remove('hidden');
+            newTaskTimeWrapper.classList.add('hidden');
+            newTaskEndDate.classList.add('hidden');
+
+            if (type === 'task') {
+                newTaskTimeWrapper.classList.remove('hidden');
+                newTaskStartTime.classList.remove('hidden');
+                // Show multi-day option for tasks
+                newTaskMultiDay.closest('div').classList.remove('hidden');
+            } else if (type === 'event') {
+                newTaskEventTime.classList.remove('hidden');
+                newTaskStartTime.classList.remove('hidden');
+                newTaskTimeWrapper.classList.remove('hidden'); // <-- ADD THIS LINE
+
+                newTaskTimeSeparator.classList.remove('hidden');
+                newTaskEndTime.classList.remove('hidden');
+                // Hide multi-day for events (events are single day by nature)
+                newTaskMultiDay.closest('div').classList.add('hidden');
+            } else { // deadline
+                // No time inputs for deadline
+                newTaskMultiDay.closest('div').classList.add('hidden');
+            }
+
+            // Update multi-day visibility based on current state
+            updateMultiDayVisibility();
+        });
+
+        // NEW: Event listener for multi-day checkbox
+        newTaskMultiDay.addEventListener('change', updateMultiDayVisibility);
+
+        // NEW: Function to update multi-day input visibility
+        function updateMultiDayVisibility() {
+            if (newTaskMultiDay.checked) {
+                newTaskEndDate.classList.remove('hidden');
+            } else {
+                newTaskEndDate.classList.add('hidden');
+            }
+        }
+
+        // NEW: Event listener for adding a new track
+        if (addTrackBtn) {
+            addTrackBtn.addEventListener('click', addTrack);
+        }
+        if (newTrackInput) {
+            newTrackInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    addTrack();
+                }
+            });
+        }
+
+        // NEW: Event listeners for projects view
+        if (addProjectBtn) {
+            addProjectBtn.addEventListener('click', addProject);
+        }
+        if (newProjectInput) {
+            newProjectInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    addProject();
+                }
+            });
+        }
+        if (backToTracksBtn) {
+            backToTracksBtn.addEventListener('click', () => {
+                tracksCard.classList.remove('hidden');
+                projectsCard.classList.add('hidden');
+                selectedTrackIndex = null;
+                renderTracks(); // Re-render tracks in case names changed (future proof)
+            });
+        }
+
+        // NEW: Event listeners for save/load functionality
+        if (saveDataBtn) {
+            saveDataBtn.addEventListener('click', exportDataToFile);
+        }
+        if (loadDataInput) {
+            loadDataInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    importDataFromFile(e.target.files[0]);
+                    // Reset the input so the same file can be selected again
+                    e.target.value = '';
+                }
+            });
+        }
+
+        // Event listener for page switching
+        openCalendarBtn.addEventListener('click', () => {
+            greetingPage.classList.remove('active');
+            tracksPage.classList.remove('active'); // Hide tracks
+            calendarPage.classList.add('active');
+            renderCalendar(currentDate);
+            renderTasks(`${selectedDate.getFullYear()}-${selectedDate.getMonth() + 1}-${selectedDate.getDate()}`);
+            renderTimeBlocking(`${selectedDate.getFullYear()}-${selectedDate.getMonth() + 1}-${selectedDate.getDate()}`); // NEW: Show time blocking
+            populateProjectDropdown(); // NEW: Refresh dropdown
+        });
+
+        // Event listener to go back to the home page
+        goHomeBtn.addEventListener('click', () => {
+            calendarPage.classList.remove('active');
+            tracksPage.classList.remove('active'); // Hide tracks
+            greetingPage.classList.add('active');
+            selectedTimelineTrackIndex = null; // NEW: Reset filter
+            renderTodayTasks();
+            renderUpcomingTasks();
+            renderTimelineFilters(); // NEW: Render filters
+        });
+
+        // NEW: Event listener for opening Tracks page
+        openTracksBtn.addEventListener('click', () => {
+            greetingPage.classList.remove('active');
+            calendarPage.classList.remove('active');
+            tracksPage.classList.add('active');
+
+            // NEW: Ensure the main tracks list is visible, not the project view
+            tracksCard.classList.remove('hidden');
+            projectsCard.classList.add('hidden');
+            selectedTrackIndex = null;
+
+            renderTracks();
+        });
+
+        // NEW: Event listener to go back to the home page from Tracks
+        goHomeFromTracksBtn.addEventListener('click', () => {
+            tracksPage.classList.remove('active');
+            calendarPage.classList.remove('active');
+            greetingPage.classList.add('active');
+            selectedTimelineTrackIndex = null; // NEW: Reset filter
+            renderTodayTasks();
+            renderUpcomingTasks();
+            renderTimelineFilters(); // NEW: Render filters
+        });
+
+        // Initial render for both pages
+        // Initial render for both pages
+        async function initializeApp() {
+            await loadData();
+            renderTodayTasks();
+            renderUpcomingTasks();
+            renderCalendarPreview();
+            renderTracks(); // Render tracks data
+            populateProjectDropdown(); // NEW: Initial population
+            renderTimelineFilters(); // NEW
+            newTaskTypeSelect.dispatchEvent(new Event('change')); // Set initial form state
+
+            // NEW: Set default dates
+            const today = new Date();
+            const todayFormatted = today.toISOString().split('T')[0];
+            newTaskStartDate.value = todayFormatted;
+            newTaskStartDate.min = todayFormatted; // Optional: restrict to today and future
+
+            // NEW: Set default start time to next hour
+            const nextHour = today.getHours() + 1;
+            newTaskStartTime.value = `${String(nextHour).padStart(2, '0')}:00`;
+        }
+
+        initializeApp();
+    </script>
+</body>
+</html>
