@@ -4,6 +4,8 @@ import { storage } from "./storage";
 import {
   insertTaskSchema,
   insertTrackSchema,
+  insertProjectSchema,
+  insertSubtaskSchema,
   insertPomodoroSessionSchema,
 } from "@shared/schema";
 import { z } from "zod";
@@ -134,6 +136,122 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ error: "Failed to delete track" });
+    }
+  });
+
+  // Project routes
+  app.get("/api/projects", async (req, res) => {
+    try {
+      const projects = await storage.getProjects();
+      res.json(projects);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch projects" });
+    }
+  });
+
+  app.get("/api/projects/:id", async (req, res) => {
+    try {
+      const project = await storage.getProject(req.params.id);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      res.json(project);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch project" });
+    }
+  });
+
+  app.post("/api/projects", async (req, res) => {
+    try {
+      const validatedData = insertProjectSchema.parse(req.body);
+      const project = await storage.createProject(validatedData);
+      res.status(201).json(project);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create project" });
+    }
+  });
+
+  app.patch("/api/projects/:id", async (req, res) => {
+    try {
+      const partialSchema = insertProjectSchema.partial();
+      const validatedData = partialSchema.parse(req.body);
+      const project = await storage.updateProject(req.params.id, validatedData);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      res.json(project);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to update project" });
+    }
+  });
+
+  app.delete("/api/projects/:id", async (req, res) => {
+    try {
+      const success = await storage.deleteProject(req.params.id);
+      if (!success) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete project" });
+    }
+  });
+
+  // Subtask routes
+  app.get("/api/tasks/:taskId/subtasks", async (req, res) => {
+    try {
+      const subtasks = await storage.getSubtasks(req.params.taskId);
+      res.json(subtasks);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch subtasks" });
+    }
+  });
+
+  app.post("/api/subtasks", async (req, res) => {
+    try {
+      const validatedData = insertSubtaskSchema.parse(req.body);
+      const subtask = await storage.createSubtask(validatedData);
+      res.status(201).json(subtask);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create subtask" });
+    }
+  });
+
+  app.patch("/api/subtasks/:id", async (req, res) => {
+    try {
+      const partialSchema = insertSubtaskSchema.partial();
+      const validatedData = partialSchema.parse(req.body);
+      const subtask = await storage.updateSubtask(req.params.id, validatedData);
+      if (!subtask) {
+        return res.status(404).json({ error: "Subtask not found" });
+      }
+      res.json(subtask);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to update subtask" });
+    }
+  });
+
+  app.delete("/api/subtasks/:id", async (req, res) => {
+    try {
+      const success = await storage.deleteSubtask(req.params.id);
+      if (!success) {
+        return res.status(404).json({ error: "Subtask not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete subtask" });
     }
   });
 

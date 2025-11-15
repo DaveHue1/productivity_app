@@ -3,6 +3,10 @@ import {
   type InsertTask,
   type Track,
   type InsertTrack,
+  type Project,
+  type InsertProject,
+  type Subtask,
+  type InsertSubtask,
   type PomodoroSession,
   type InsertPomodoroSession,
 } from "@shared/schema";
@@ -23,6 +27,19 @@ export interface IStorage {
   updateTrack(id: string, track: Partial<InsertTrack>): Promise<Track | undefined>;
   deleteTrack(id: string): Promise<boolean>;
 
+  // Projects
+  getProjects(): Promise<Project[]>;
+  getProject(id: string): Promise<Project | undefined>;
+  createProject(project: InsertProject): Promise<Project>;
+  updateProject(id: string, project: Partial<InsertProject>): Promise<Project | undefined>;
+  deleteProject(id: string): Promise<boolean>;
+
+  // Subtasks
+  getSubtasks(taskId: string): Promise<Subtask[]>;
+  createSubtask(subtask: InsertSubtask): Promise<Subtask>;
+  updateSubtask(id: string, subtask: Partial<InsertSubtask>): Promise<Subtask | undefined>;
+  deleteSubtask(id: string): Promise<boolean>;
+
   // Pomodoro Sessions
   getPomodoroSessions(): Promise<PomodoroSession[]>;
   createPomodoroSession(session: InsertPomodoroSession): Promise<PomodoroSession>;
@@ -31,11 +48,15 @@ export interface IStorage {
 export class MemStorage implements IStorage {
   private tasks: Map<string, Task>;
   private tracks: Map<string, Track>;
+  private projects: Map<string, Project>;
+  private subtasks: Map<string, Subtask>;
   private pomodoroSessions: Map<string, PomodoroSession>;
 
   constructor() {
     this.tasks = new Map();
     this.tracks = new Map();
+    this.projects = new Map();
+    this.subtasks = new Map();
     this.pomodoroSessions = new Map();
 
     // Add some sample data for development
@@ -202,6 +223,84 @@ export class MemStorage implements IStorage {
 
   async deleteTrack(id: string): Promise<boolean> {
     return this.tracks.delete(id);
+  }
+
+  // Project methods
+  async getProjects(): Promise<Project[]> {
+    return Array.from(this.projects.values()).sort((a, b) =>
+      a.name.localeCompare(b.name)
+    );
+  }
+
+  async getProject(id: string): Promise<Project | undefined> {
+    return this.projects.get(id);
+  }
+
+  async createProject(insertProject: InsertProject): Promise<Project> {
+    const id = randomUUID();
+    const project: Project = {
+      ...insertProject,
+      id,
+      createdAt: new Date(),
+    };
+    this.projects.set(id, project);
+    return project;
+  }
+
+  async updateProject(
+    id: string,
+    updates: Partial<InsertProject>
+  ): Promise<Project | undefined> {
+    const project = this.projects.get(id);
+    if (!project) return undefined;
+
+    const updatedProject: Project = {
+      ...project,
+      ...updates,
+    };
+    this.projects.set(id, updatedProject);
+    return updatedProject;
+  }
+
+  async deleteProject(id: string): Promise<boolean> {
+    return this.projects.delete(id);
+  }
+
+  // Subtask methods
+  async getSubtasks(taskId: string): Promise<Subtask[]> {
+    return Array.from(this.subtasks.values())
+      .filter(subtask => subtask.taskId === taskId)
+      .sort((a, b) => a.order - b.order);
+  }
+
+  async createSubtask(insertSubtask: InsertSubtask): Promise<Subtask> {
+    const id = randomUUID();
+    const subtask: Subtask = {
+      ...insertSubtask,
+      id,
+      createdAt: new Date(),
+    };
+    this.subtasks.set(id, subtask);
+    return subtask;
+  }
+
+  async updateSubtask(
+    id: string,
+    updates: Partial<InsertSubtask>
+  ): Promise<Subtask | undefined> {
+    const subtask = this.subtasks.get(id);
+    if (!subtask) return undefined;
+
+    const updatedSubtask: Subtask = {
+      ...subtask,
+      ...updates,
+    };
+    this.subtasks.set(id, updatedSubtask);
+    return updatedSubtask;
+  }
+
+  async deleteSubtask(id: string): Promise<boolean> {
+    return this.subtasks.delete(id);
   }
 
   // Pomodoro Session methods

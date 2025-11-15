@@ -12,18 +12,22 @@ import {
 } from "@/lib/utils-date";
 import { TASK_TYPES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
+import { TimeBlockCalendar } from "@/components/time-block-calendar";
+import { DragDropTaskList } from "@/components/drag-drop-task-list";
 
 interface CalendarViewProps {
   tasks: Task[];
   tracks: Track[];
   onDateClick: (date: string) => void;
   onTaskClick: (task: Task) => void;
+  onTaskUpdate: (taskId: string, updates: Partial<Task>) => void;
 }
 
-export function CalendarView({ tasks, tracks, onDateClick, onTaskClick }: CalendarViewProps) {
+export function CalendarView({ tasks, tracks, onDateClick, onTaskClick, onTaskUpdate }: CalendarViewProps) {
   const today = new Date();
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
+  const [selectedDateStr, setSelectedDateStr] = useState<string | null>(null);
 
   const daysInMonth = getDaysInMonth(currentYear, currentMonth);
   const firstDay = getFirstDayOfMonth(currentYear, currentMonth);
@@ -88,7 +92,7 @@ export function CalendarView({ tasks, tracks, onDateClick, onTaskClick }: Calend
             "bg-card",
             isToday && "border-primary border-2"
           )}
-          onClick={() => onDateClick(dateStr)}
+          onClick={() => handleDateClick(dateStr)}
           data-testid={`calendar-day-${day}`}
         >
           <div className={cn(
@@ -135,49 +139,82 @@ export function CalendarView({ tasks, tracks, onDateClick, onTaskClick }: Calend
     return days;
   };
 
-  return (
-    <Card className="p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-semibold">
-          {getMonthName(currentMonth)} {currentYear}
-        </h2>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={goToToday}
-            data-testid="button-today"
-          >
-            <CalendarIcon className="h-4 w-4 mr-2" />
-            Today
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={previousMonth}
-            data-testid="button-previous-month"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={nextMonth}
-            data-testid="button-next-month"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
+  const handleDateClick = (dateStr: string) => {
+    setSelectedDateStr(dateStr);
+    onDateClick(dateStr);
+  };
 
-      <div className="grid grid-cols-7 gap-2">
-        {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-          <div key={day} className="text-center font-semibold text-sm text-muted-foreground py-2">
-            {day}
+  const getTasksForSelectedDate = () => {
+    if (!selectedDateStr) return [];
+    return tasks.filter(task => task.date === selectedDateStr);
+  };
+
+  return (
+    <div className="space-y-6">
+      <Card className="p-6">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-semibold">
+            {getMonthName(currentMonth)} {currentYear}
+          </h2>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={goToToday}
+              data-testid="button-today"
+            >
+              <CalendarIcon className="h-4 w-4 mr-2" />
+              Today
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={previousMonth}
+              data-testid="button-previous-month"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={nextMonth}
+              data-testid="button-next-month"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
           </div>
-        ))}
-        {renderCalendarDays()}
-      </div>
-    </Card>
+        </div>
+
+        <div className="grid grid-cols-7 gap-2">
+          {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
+            <div key={day} className="text-center font-semibold text-sm text-muted-foreground py-2">
+              {day}
+            </div>
+          ))}
+          {renderCalendarDays()}
+        </div>
+      </Card>
+
+      {selectedDateStr && (
+        <>
+          <Card className="p-6">
+            <TimeBlockCalendar
+              date={new Date(selectedDateStr)}
+              tasks={tasks}
+              onTaskClick={onTaskClick}
+            />
+          </Card>
+          
+          <Card className="p-6">
+            <DragDropTaskList
+              tasks={getTasksForSelectedDate()}
+              tracks={tracks}
+              onTaskUpdate={onTaskUpdate}
+              onTaskClick={onTaskClick}
+            />
+          </Card>
+        </>
+      )}
+    </div>
   );
 }

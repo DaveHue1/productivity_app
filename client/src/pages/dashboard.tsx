@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Task, Track, InsertTask } from "@shared/schema";
+import { Task, Track, Project, InsertTask } from "@shared/schema";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import { PomodoroTimer } from "@/components/pomodoro-timer";
 import { ExportDialog } from "@/components/export-dialog";
 import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
 import { NotificationToast, Notification } from "@/components/notification-toast";
+import { HorizontalTimeline } from "@/components/horizontal-timeline";
 import {
   Plus,
   Search,
@@ -25,6 +26,7 @@ import {
   Layers,
   Clock,
   AlertCircle,
+  CalendarRange,
 } from "lucide-react";
 import { getTodayString, isToday, addDays, isPast } from "@/lib/utils-date";
 import { TASK_TYPES } from "@/lib/constants";
@@ -32,7 +34,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 
-type View = "dashboard" | "calendar" | "statistics" | "tracks";
+type View = "dashboard" | "calendar" | "statistics" | "tracks" | "timeline";
 
 export default function Dashboard() {
   const { toast } = useToast();
@@ -55,6 +57,10 @@ export default function Dashboard() {
 
   const { data: tracks = [], isLoading: tracksLoading } = useQuery<Track[]>({
     queryKey: ["/api/tracks"],
+  });
+
+  const { data: projects = [] } = useQuery<Project[]>({
+    queryKey: ["/api/projects"],
   });
 
   const { data: pomodoroSessions = [], isLoading: pomodoroLoading } = useQuery({
@@ -238,8 +244,47 @@ export default function Dashboard() {
     }
   };
 
+  const handleTaskUpdate = (taskId: string, updates: Partial<Task>) => {
+    const task = tasks.find((t) => t.id === taskId);
+    if (task) {
+      updateTaskMutation.mutate({ ...task, ...updates });
+    }
+  };
+
   const dismissNotification = (id: string) => {
     setNotifications((prev) => prev.filter((n) => n.id !== id));
+  };
+
+  const handleDataImport = async (data: any) => {
+    try {
+      for (const track of data.tracks || []) {
+        await apiRequest("POST", "/api/tracks", { name: track.name, color: track.color });
+      }
+      
+      for (const project of data.projects || []) {
+        await apiRequest("POST", "/api/projects", { name: project.name, description: project.description, trackId: project.trackId, color: project.color });
+      }
+      
+      for (const task of data.tasks || []) {
+        const { id, createdAt, ...taskData } = task;
+        await apiRequest("POST", "/api/tasks", taskData);
+      }
+      
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tracks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      
+      toast({
+        title: "Data imported successfully",
+        description: "All your data has been imported",
+      });
+    } catch (error) {
+      toast({
+        title: "Import failed",
+        description: "Some data could not be imported",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -326,6 +371,14 @@ export default function Dashboard() {
             >
               <BarChart3 className="h-4 w-4 mr-2" />
               Statistics
+            </Button>
+            <Button
+              variant={view === "timeline" ? "default" : "outline"}
+              onClick={() => setView("timeline")}
+              data-testid="button-view-timeline"
+            >
+              <CalendarRange className="h-4 w-4 mr-2" />
+              Timeline
             </Button>
           </div>
 
@@ -445,13 +498,26 @@ export default function Dashboard() {
               tracks={tracks}
               onDateClick={(date) => {
                 setSelectedDate(date);
-                // Could open a day view or task creation dialog
               }}
               onTaskClick={(task) => {
                 setEditingTask(task);
                 setTaskDialogOpen(true);
               }}
+              onTaskUpdate={handleTaskUpdate}
             />
+          )}
+
+          {view === "timeline" && (
+            <Card className="p-6">
+              <HorizontalTimeline
+                tasks={filteredTasks}
+                tracks={tracks}
+                onTaskClick={(task) => {
+                  setEditingTask(task);
+                  setTaskDialogOpen(true);
+                }}
+              />
+            </Card>
           )}
 
           {view === "tracks" && (
@@ -563,6 +629,8 @@ export default function Dashboard() {
           onOpenChange={setExportDialogOpen}
           tasks={tasks}
           tracks={tracks}
+          projects={projects}
+          onImport={handleDataImport}
         />
 
         <KeyboardShortcuts open={shortcutsOpen} onOpenChange={setShortcutsOpen} />

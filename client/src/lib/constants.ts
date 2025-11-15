@@ -8,6 +8,7 @@ export const TASK_TYPES: Record<TaskType, { icon: string; label: string; color: 
   reminder: { icon: "⏰", label: "Reminder", color: "#f59e0b" },
   meeting: { icon: "👥", label: "Meeting", color: "#10b981" },
   project: { icon: "🚀", label: "Project", color: "#ec4899" },
+  deadline: { icon: "⏳", label: "Deadline", color: "#dc2626" },
 };
 
 // Priority colors
